@@ -8,7 +8,7 @@ class LLMClient:
     def get_client(self) -> AysncOpenAI:
         if self._client is None:
             self._client = AysncOpenAI(
-                    api_key="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",
+                    api_key="",
                     base_url="https://openrouter.ai/api/v1",
             )
         return self._client
@@ -18,4 +18,14 @@ class LLMClient:
             await self.client.close()
             self._client = None
 
-    async def chat_completion(self, messages: list[dict[str, Any]]):
+    async def chat_completion(self, messages: list[dict[str, Any]], stream: bool = True):
+        if stream:
+            self._stream_response()
+        else:
+            self.non_stream_response()
+        
+    async def _stream_response(self):
+        pass
+
+    async def _non_stream_response(self):
+        pass
