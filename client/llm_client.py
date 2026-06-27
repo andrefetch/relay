@@ -31,7 +31,7 @@ class LLMClient:
         if stream:
             self._stream_response()
         else:
-            self.non_stream_response(client, kwargs)
+            await self._non_stream_response(client, kwargs)
         
     async def _stream_response(self):
         pass

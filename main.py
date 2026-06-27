@@ -1,4 +1,5 @@
 from client.llm_client import LLMClient
+import asyncio
 
 async def main():
 
@@ -9,3 +10,5 @@ async def main():
     }]
     await client.chat_completion(messages, False)
     print('done')
+
+asyncio.run(main())
