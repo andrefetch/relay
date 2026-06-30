@@ -1,5 +1,6 @@
 from openai import AsyncOpenAI
 from typing import Any
+from client.response import TextDelta, TokenUsage, StreamEvent
 
 class LLMClient:
     def __init__(self) -> None:
@@ -36,13 +37,22 @@ class LLMClient:
     async def _stream_response(self):
         pass
 
-    async def _non_stream_response(self, client: AsyncOpenAI, kwargs: dict[str, Any]):
+    async def _non_stream_response(self, client: AsyncOpenAI, kwargs: dict[str, Any]) -> StreamEvent:
         response = await client.chat.completions.create(**kwargs)
         choice = response.choices[0] # only interested in first index, first message
         message = choice.message
-        text = None
+        text_delta = None
 
         if message.content:
-            text = 
+            text_delta = TextDelta(content=message.content) 
+        
+        usage = None
+        if response.usage:
+            usage = TokenUsage(
+                prompt_tokens=response.usage.prompt_tokens,
+                completion_tokens=response.usage.completion_tokens,
+                total_tokens=response.usage.total_tokens,
+                cached_tokens=response.prompt_token_details.cached_tokens
+            )
 
         print(response)
