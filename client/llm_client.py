@@ -24,20 +24,32 @@ class LLMClient:
         client = self.get_client()
 
         kwargs = {
-            "model": "nvidia/nemotron-3-ultra-550b-a55b:free",
+            "model": "cohere/north-mini-code:free",
             "messages": messages,
             "stream": stream,
         }
 
         if stream:
-            self._stream_response()
+            async for event in self._stream_response(client, kwargs):
+                yield event
         else:
             event = await self._non_stream_response(client, kwargs)
             yield event
         return
         
-    async def _stream_response(self):
-        pass
+    async def _stream_response(self, client: AsyncOpenAI, kwargs: dict[str, Any]) -> AsyncGenerator[StreamEvent, None]:
+        response = await client.chat.completions.create(**kwargs)
+
+        async for chunk in response:
+            if hasattr(chunk, "usage") and chunk.usage:
+                usage = TokenUsage(
+                    prompt_tokens=chunk.usage.prompt_tokens,
+                    completion_tokens=chunk.usage.completion_tokens,
+                    total_tokens=chunk.usage.total_tokens,
+                    cached_tokens=chunk.usage.prompt_tokens_details.cached_tokens,
+                )
+            if not chunk.choices:
+                continue
 
     async def _non_stream_response(self, client: AsyncOpenAI, kwargs: dict[str, Any]) -> StreamEvent:
         response = await client.chat.completions.create(**kwargs)
@@ -54,7 +66,7 @@ class LLMClient:
                 prompt_tokens=response.usage.prompt_tokens,
                 completion_tokens=response.usage.completion_tokens,
                 total_tokens=response.usage.total_tokens,
-                cached_tokens=response.prompt_token_details.cached_tokens
+                cached_tokens=response.usage.prompt_tokens_details.cached_tokens,
             )
         
         return StreamEvent(
