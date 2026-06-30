@@ -1,6 +1,6 @@
 from openai import AsyncOpenAI
 from typing import Any
-from client.response import TextDelta, TokenUsage, StreamEvent
+from client.response import TextDelta, TokenUsage, StreamEvent, EventType
 
 class LLMClient:
     def __init__(self) -> None:
@@ -54,5 +54,10 @@ class LLMClient:
                 total_tokens=response.usage.total_tokens,
                 cached_tokens=response.prompt_token_details.cached_tokens
             )
-
-        print(response)
+        
+        return StreamEvent(
+            type=EventType.MESSAGE_COMPLETE,
+            text_delta=text_delta,
+            finish_reason=choice.finish_reason,
+            usage=usage,
+        )
