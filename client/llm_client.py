@@ -18,7 +18,7 @@ class LLMClient:
             await self.client.close()
             self._client = None
 
-    async def chat_completion(self, messages: list[dict[str, Any]], stream: bool = True):
+    async def chat_completion(self, messages: list[dict[str, Any]], stream: bool = True) -> str:
 
         client = self.get_client()
 
@@ -38,4 +38,11 @@ class LLMClient:
 
     async def _non_stream_response(self, client: AsyncOpenAI, kwargs: dict[str, Any]):
         response = await client.chat.completions.create(**kwargs)
+        choice = response.choices[0] # only interested in first index, first message
+        message = choice.message
+        text = None
+
+        if message.content:
+            text = 
+
         print(response)
