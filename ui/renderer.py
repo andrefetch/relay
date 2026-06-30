@@ -38,3 +38,10 @@ def get_console() -> Console:
         _console = Console(theme=AGENT_THEME, highlight=False)
     
     return _console
+
+class TUI:
+    def __init__(self, console: Console | None = None) -> None:
+        self.console = console or get_console()
+    
+    def stream_assistant_delta(self, content: str) -> None:
+        self.console.print(content, end="", markup=False)
