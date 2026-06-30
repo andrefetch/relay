@@ -1,7 +1,34 @@
+from __future__ import annotations
 from dataclasses import dataclass
+from enum import Enum
 
-class EventType:
+@dataclass
+class TextDelta:
+    content: str
+
+    def __str__(self):
+        return self.content
+
+@dataclass
+class EventType(str, Enum):
+    TEXT_DELTA = "text_delta"
+    MESSAGE_COMPLETE = "message_complete"
+    ERROR = "error"
+
+@dataclass
+class TokenUsage:
+    prompt_tokens: int = 0
+    completion_tokens: int = 0
+    total_tokens: int = 0
+    cached_tokens: int = 0
+
+    def __add__(self, other: TokenUsage):
+
 
 @dataclass
 class StreamEvent:
-    type: 
+    type: EventType
+    text_delta: TextDelta | None = None
+    error: str | None = None
+    finish_reason: str | None = None
+    usage: 
