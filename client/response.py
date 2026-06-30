@@ -10,7 +10,7 @@ class TextDelta:
         return self.content
 
 @dataclass
-class EventType(str, Enum):
+class StreamEventType(str, Enum):
     TEXT_DELTA = "text_delta"
     MESSAGE_COMPLETE = "message_complete"
     ERROR = "error"
@@ -33,7 +33,7 @@ class TokenUsage:
 
 @dataclass
 class StreamEvent:
-    type: EventType
+    type: StreamEventType
     text_delta: TextDelta | None = None
     error: str | None = None
     finish_reason: str | None = None
