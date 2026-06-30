@@ -23,15 +23,17 @@ class LLMClient:
             self._client = None
 
     async def chat_completion(self, messages: list[dict[str, Any]], stream: bool = True) -> AsyncGenerator[StreamEvent, None]:
+
+        client = self.get_client()
+
+        kwargs = {
+            "model": "cohere/north-mini-code:free",
+            "messages": messages,
+            "stream": stream,
+        }
+        
         for attempt in range(self._max_retries + 1):
             try:
-                client = self.get_client()
-
-                kwargs = {
-                    "model": "cohere/north-mini-code:free",
-                    "messages": messages,
-                    "stream": stream,
-                }
 
                 if stream:
                     async for event in self._stream_response(client, kwargs):
