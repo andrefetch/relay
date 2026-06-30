@@ -8,7 +8,8 @@ async def main():
         'role': 'user',
         'content': 'what is up'
     }]
-    await client.chat_completion(messages, False)
-    print('done')
+    async for event in client.chat_completion(messages, False):
+        print(event)
+    print("done!")
 
 asyncio.run(main())
