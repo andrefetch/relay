@@ -1,10 +1,13 @@
-from openai import AsyncOpenAI
+import math
+import asyncio
+from openai import AsyncOpenAI, RateLimitError, APIConnectionError, APIError
 from typing import Any, AsyncGenerator
 from client.response import TextDelta, TokenUsage, StreamEvent, EventType
 
 class LLMClient:
     def __init__(self) -> None:
         self._client : AsyncOpenAI | None = None
+        self._max_retries: int = 3
 
     def get_client(self) -> AsyncOpenAI:
         if self._client is None:
@@ -20,22 +23,52 @@ class LLMClient:
             self._client = None
 
     async def chat_completion(self, messages: list[dict[str, Any]], stream: bool = True) -> AsyncGenerator[StreamEvent, None]:
+        for attempt in range(self._max_retries + 1):
+            try:
+                client = self.get_client()
 
-        client = self.get_client()
+                kwargs = {
+                    "model": "cohere/north-mini-code:free",
+                    "messages": messages,
+                    "stream": stream,
+                }
 
-        kwargs = {
-            "model": "cohere/north-mini-code:free",
-            "messages": messages,
-            "stream": stream,
-        }
+                if stream:
+                    async for event in self._stream_response(client, kwargs):
+                        yield event
+                else:
+                    event = await self._non_stream_response(client, kwargs)
+                    yield event
+                return
+            except RateLimitError as e:
+                if attempt < self._max_retries:
+                    wait_time = math.pow(2, attempt)
+                    await asyncio.sleep(wait_time)
+                else:
+                    yield StreamEvent(
+                        type=EventType.ERROR,
+                        error=f"Rate limit exceeded: {e}",
+                    ),
+                    return
+            except APIConnectionError as e:
+                if attempt < self._max_retries:
+                    wait_time = math.pow(2, attempt)
+                    await asyncio.sleep(wait_time)
+                else:
+                    yield StreamEvent(
+                        type=EventType.ERROR,
+                        error=f"Connection Error exceeded: {e}",
+                    )
+                    return
+            # No retries here, soley because there's no point in retrying if there is a hardstuck API Error
+            except APIError as e:
+                    yield StreamEvent(
+                        type=EventType.ERROR,
+                        error=f"API Error: {e}",
+                    )
+                    return
 
-        if stream:
-            async for event in self._stream_response(client, kwargs):
-                yield event
-        else:
-            event = await self._non_stream_response(client, kwargs)
-            yield event
-        return
+
         
     async def _stream_response(self, client: AsyncOpenAI, kwargs: dict[str, Any]) -> AsyncGenerator[StreamEvent, None]:
         response = await client.chat.completions.create(**kwargs)
