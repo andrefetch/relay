@@ -1,9 +1,10 @@
+from pathlib import Path
 from __future__ import annotations
 from typing import AsyncGenerator
 from context.manager import ContextManager
 from agent.events import AgentEvent, AgentEventType
 from client.llm_client import LLMClient
-from client.response import StreamEventType
+from client.response import StreamEventType, ToolCall
 from tools.registry import create_default_registery
 
 class Agent:
@@ -29,6 +30,7 @@ class Agent:
         response_text = ""
 
         tool_schemas = self.tool_registery.get_schemas()
+        tool_calls: list[ToolCall] = []
         
         async for event in self.client.chat_completion(
             self.context_manager.get_messages(), 
@@ -41,6 +43,9 @@ class Agent:
                     content = event.text_delta.content
                     response_text += content
                 yield AgentEvent.text_delta(content)
+            elif event.type == StreamEventType.TOOL_CALL_COMPLETE:
+                if event.tool_call:
+                    tool_calls.append(event.tool_call)
             elif event.type == StreamEventType.ERROR:
                 yield AgentEvent.agent_error(event.error or "Unknown error occured.")
         
@@ -50,6 +55,19 @@ class Agent:
     
         if response_text:
             yield AgentEvent.text_complete(response_text)
+        
+        for tool_call in tool_calls:
+            yield AgentEvent.tool_call_start(
+                tool_call.call_id,
+                tool_call.name,
+                tool_call.arguments
+            )
+
+            result = await self.tool_registery.invoke(
+                tool_call.name,
+                tool_call.arguments,
+                Path.cwd,
+            )
     
     async def __aenter__(self) -> Agent:
         return self

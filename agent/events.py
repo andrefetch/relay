@@ -3,10 +3,11 @@ from enum import Enum
 from typing import Any
 from dataclasses import dataclass, field
 from client.response import TokenUsage
+from tools.base import ToolResult
 
 class AgentEventType(str, Enum):
 
-    # Agentic lifestyle & loop
+    # Agentic loops, and err
     AGENT_START="agent_start"
     AGENT_END="agent_end"
     AGENT_ERROR="agent_error"
@@ -14,6 +15,10 @@ class AgentEventType(str, Enum):
     # Text streaming
     TEXT_DELTA = "text_delta"
     TEXT_COMPLETE = "text_complete"
+
+    # Tool Calls
+    TOOL_CALL_START = 'tool_call_start'
+    TOOL_CALL_COMPLETE = 'tool_call_complete'
 
 @dataclass
 class AgentEvent:
@@ -24,33 +29,71 @@ class AgentEvent:
     def agent_start(cls, message: str) -> AgentEvent:
         return cls(
             type=AgentEventType.AGENT_START,
-            data={"message": message}
+            data={
+                "message": message
+            }
         )
 
     @classmethod
     def agent_end(cls, response: str | None = None, usage: TokenUsage | None = None) -> AgentEvent:
         return cls(
             type=AgentEventType.AGENT_END,
-            data={"response": response, 'usage': usage.__dict__ if usage else None},
+            data={
+                "response": response,
+                'usage': usage.__dict__ if usage else None
+            },
         )
     
     @classmethod
     def agent_error(cls, error: str, details: dict[str, Any] | None = None) -> AgentEvent:
         return cls(
             type=AgentEventType.AGENT_ERROR,
-            data={"error": error, 'details': details or {} }
+            data={
+                "error": error,
+                'details': details or {} 
+            }
         )
 
     @classmethod
     def text_delta(cls, content: str) -> AgentEvent:
         return cls(
             type=AgentEventType.TEXT_DELTA,
-            data={"content": content}
+            data={
+                "content": content
+            }
         )
 
     @classmethod
     def text_complete(cls, content: str) -> AgentEvent:
         return cls(
             type=AgentEventType.TEXT_COMPLETE,
-            data={"content": content}
+            data={
+                "content": content
+            }
+        )
+    
+    @classmethod
+    def tool_call_start(cls, call_id: str, name: str, arguments: dict[str, Any]):
+        return cls(
+            type=AgentEventType.TOOL_CALL_START,
+            data={
+                'call_id': call_id,
+                'name': name,
+                'arguments': arguments
+            }
+        )
+    
+    @classmethod
+    def tool_call_complete(cls, call_id: str, name: str, result: ToolResult):
+        return cls(
+            type=AgentEventType.TOOL_CALL_COMPLETE,
+            data={
+                'call_id': call_id,
+                'name': name,
+                'success': result.success,
+                'output': result.output,
+                'error': result.error,
+                'metadata': result.metadata,
+                'truncated': result.truncated
+            }
         )
