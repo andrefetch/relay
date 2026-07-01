@@ -2,7 +2,7 @@ import math
 import asyncio
 from openai import AsyncOpenAI, RateLimitError, APIConnectionError, APIError
 from typing import Any, AsyncGenerator
-from client.response import TextDelta, TokenUsage, StreamEvent, EventType
+from client.response import TextDelta, TokenUsage, StreamEvent, StreamEventType
 
 class LLMClient:
     def __init__(self) -> None:
@@ -48,7 +48,7 @@ class LLMClient:
                     await asyncio.sleep(wait_time)
                 else:
                     yield StreamEvent(
-                        type=EventType.ERROR,
+                        type=StreamEventType.ERROR,
                         error=f"Rate limit exceeded: {e}",
                     ),
                     return
@@ -58,14 +58,14 @@ class LLMClient:
                     await asyncio.sleep(wait_time)
                 else:
                     yield StreamEvent(
-                        type=EventType.ERROR,
+                        type=StreamEventType.ERROR,
                         error=f"Connection Error exceeded: {e}",
                     )
                     return
             # No retries here, soley because there's no point in retrying if there is a hardstuck API Error
             except APIError as e:
                     yield StreamEvent(
-                        type=EventType.ERROR,
+                        type=StreamEventType.ERROR,
                         error=f"API Error: {e}",
                     )
                     return
@@ -98,12 +98,12 @@ class LLMClient:
             
             if delta.content:
                 yield StreamEvent(
-                    type=EventType.TEXT_DELTA,
+                    type=StreamEventType.TEXT_DELTA,
                     text_delta=TextDelta(delta.content),
                 )
             
         yield StreamEvent(
-            type=EventType.MESSAGE_COMPLETE,
+            type=StreamEventType.MESSAGE_COMPLETE,
             finish_reason=finish_reason,
             usage=usage,
         )
@@ -127,7 +127,7 @@ class LLMClient:
             )
         
         return StreamEvent(
-            type=EventType.MESSAGE_COMPLETE,
+            type=StreamEventType.MESSAGE_COMPLETE,
             text_delta=text_delta,
             finish_reason=choice.finish_reason,
             usage=usage,
