@@ -32,7 +32,7 @@ class ContextManager:
             token_count=count_tokens(content, self._model_name)
         )
 
-        self.messages.append(item)
+        self._messages.append(item)
     
     def add_assistant_message(self, content):
         item = MessageItem(
@@ -41,7 +41,7 @@ class ContextManager:
             token_count=count_tokens(content, self._model_name)
         )
 
-        self.messages.append(item)
+        self._messages.append(item)
     
     def get_messages(self) -> list[dict[str, Any]]:
         messages = []

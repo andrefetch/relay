@@ -12,7 +12,7 @@ def count_tokens(text: str, model: str) -> int:
     tokenizer = get_tokenizer(model)
 
     if tokenizer:
-        return len(tokenizer(text))
+        return len(tokenizer.encode(text))
 
     return estimate_tokens(text)
 
