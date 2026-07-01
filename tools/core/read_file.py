@@ -11,13 +11,14 @@ class ReadFileParams(BaseModel):
     )
 
     offset: int = Field(
-        1, 
-        ge=1, 
-        description='The line number to start reading from, does not use 0 as base index starts from 1. else -> defaults to 1')
+        1,
+        ge=1,
+        description='1-indexed line number to start reading from. Defaults to 1 (start of file). Minimum value is 1.'
+    )
 
     limit: int | None = Field(
         None,
-        description='Maximum number of lines to read, without specification it will read the whole file'
+        description='Maximum number of lines to read starting from offset. If omitted, reads to the end of the file.'
     )
 
 class ReadFileTool(Tool):
@@ -25,15 +26,15 @@ class ReadFileTool(Tool):
     description = (
         "Read the contents of a file from the filesystem and return it as text with line numbers prefixed "
         "(e.g. '1: import os'). If 'offset' exceeds the file's line count, returns an empty result. "
-        "Fails if the file does not exist, is a directory, or cannot be read (e.g. binary/permission errors)."
-        "Cannot read binary files (images, executables, etc.)"
-        "After reading the contents of the file, present the line numbers"
+        "Fails if the file does not exist, is a directory, or cannot be read (e.g. binary/permission errors). "
+        "Cannot read binary files (images, executables, etc.). "
+        "After reading the contents of the file, present the line numbers."
     )
     kind = ToolKind.READ
 
     schema = ReadFileParams
 
-    MAX_FILE_SIZE = 1024*1024*10
+    MAX_FILE_SIZE = 1024 * 1024 * 10
     MAX_OUTPUT_TOKENS = 25000
 
     async def execute(self, invocation: ToolInvocation) -> ToolResult:
@@ -42,23 +43,23 @@ class ReadFileTool(Tool):
 
         if not path.exists():
             return ToolResult.error_result(f"File not found at: {path}")
-        
+
         if not path.is_file():
             return ToolResult.error_result(f"Path is not a file: {path}")
-        
+
         file_size = path.stat().st_size
 
         if file_size > self.MAX_FILE_SIZE:
             return ToolResult.error_result(
-                f"File too large ({file_size / (1024 * 1024):.1f}MB)."
-                f"The maximum file size is: {self.MAX_FILE_SIZE / (1024 * 1024):0f}MB."
+                f"File too large ({file_size / (1024 * 1024):.1f}MB). "
+                f"The maximum file size is: {self.MAX_FILE_SIZE / (1024 * 1024):.0f}MB."
             )
-        
+
         if is_binary_file(path):
             file_size_mb = file_size / (1024 * 1024)
             size_str = f"{file_size_mb:.2f}MB" if file_size_mb >= 1 else f"{file_size} bytes"
             return ToolResult.error_result(
-                f"Cannot read binary file: {path.name} ({size_str})"
+                f"Cannot read binary file: {path.name} ({size_str}). "
                 f"This tool only reads text files."
             )
         try:
@@ -66,12 +67,12 @@ class ReadFileTool(Tool):
                 content = path.read_text(encoding='utf-8')
             except UnicodeDecodeError:
                 content = path.read_text(encoding='latin-1')
-            
+
             lines = content.splitlines()
             total_lines = len(lines)
 
             if total_lines == 0:
-                return ToolResult.success(
+                return ToolResult.success_result(
                     "File is empty.", metadata={
                         "lines": 0
                     }
@@ -83,16 +84,17 @@ class ReadFileTool(Tool):
                 end_index = min(start_index + params.limit, total_lines)
             else:
                 end_index = total_lines
-            
+
             selected_lines = lines[start_index:end_index]
             formatted_lines = []
-            
+
             for i, line in enumerate(selected_lines, start=start_index):
-                formatted_lines.append(f"{i:6}|{line}")
-            
-            output = "\n".joing(formatted_lines)
+                formatted_lines.append(f"{i + 1:6}|{line}")
+
+            output = "\n".join(formatted_lines)
             token_count = count_tokens(output)
 
+            truncated = False
             if token_count > self.MAX_OUTPUT_TOKENS:
                 output = truncate_text(
                     output,
@@ -100,17 +102,17 @@ class ReadFileTool(Tool):
                     suffix=f"\n... [truncated] {total_lines} total lines."
                 )
                 truncated = True
-            
+
             metadata_lines = []
             if start_index > 0 or end_index < total_lines:
                 metadata_lines.append(
-                    f"Showling lines {start_index+1}-{end_index} of {total_lines}"
+                    f"Showing lines {start_index + 1}-{end_index} of {total_lines}"
                 )
-            
+
             if metadata_lines:
                 header = ' | '.join(metadata_lines) + "\n\n"
                 output = header + output
-            
+
             return ToolResult.success_result(
                 output=output,
                 truncated=truncated,
