@@ -92,7 +92,7 @@ class ReadFileTool(Tool):
                 formatted_lines.append(f"{i + 1:6}|{line}")
 
             output = "\n".join(formatted_lines)
-            token_count = count_tokens(output)
+            token_count = count_tokens(output, "cohere/north-mini-code:free")
 
             truncated = False
             if token_count > self.MAX_OUTPUT_TOKENS:
