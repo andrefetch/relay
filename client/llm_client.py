@@ -182,10 +182,21 @@ class LLMClient:
         response = await client.chat.completions.create(**kwargs)
         choice = response.choices[0] # only interested in first index, first message
         message = choice.message
-        text_delta = None
 
+        text_delta = None
         if message.content:
             text_delta = TextDelta(content=message.content) 
+
+        tool_calls: list[ToolCall] = []
+        if message.tool_calls:
+            for toolcall in message.tool_calls:
+                tool_calls.append(ToolCall(
+                    call_id=toolcall.id,
+                    name=toolcall.function.name,
+                    arguments=parse_tool_call_arguments(
+                        toolcall.function.arguments
+                    )
+                ))
         
         usage = None
         if response.usage:
