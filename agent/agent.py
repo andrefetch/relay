@@ -35,6 +35,7 @@ class Agent:
             tools=tool_schemas if tool_schemas else None, 
             stream=True
         ):
+            print(event)
             if event.type == StreamEventType.TEXT_DELTA:
                 if event.text_delta:
                     content = event.text_delta.content
