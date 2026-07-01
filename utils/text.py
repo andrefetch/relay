@@ -18,3 +18,16 @@ def count_tokens(text: str, model: str) -> int:
 
 def estimate_tokens(text: str) -> int:
     return max(1, len(text) // 4) # on avg 1 token is ~ 4 characters
+
+def truncate_text(
+        text: str, 
+        model: str, 
+        max_tokens: int, 
+        suffix: str = "\n...[truncated]"):
+    current_tokens = count_tokens(text, model)
+
+    if current_tokens <= max_tokens:
+        return text
+    
+    suffix_tokens = count_tokens(suffix, model)
+    target_tokens = max_tokens - suffix_tokens

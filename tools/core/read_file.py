@@ -1,5 +1,6 @@
 from pydantic import BaseModel, Field
 from utils.paths import resolve_path, is_binary_file
+from utils.text import count_tokens
 from tools.base import Tool, ToolKind, ToolInvocation, ToolResult
 
 class ReadFileParams(BaseModel):
@@ -26,12 +27,14 @@ class ReadFileTool(Tool):
         "(e.g. '1: import os'). If 'offset' exceeds the file's line count, returns an empty result. "
         "Fails if the file does not exist, is a directory, or cannot be read (e.g. binary/permission errors)."
         "Cannot read binary files (images, executables, etc.)"
+        "After reading the contents of the file, present the line numbers"
     )
     kind = ToolKind.READ
 
     schema = ReadFileParams
 
     MAX_FILE_SIZE = 1024*1024*10
+    MAX_OUTPUT_TOKENS = 25000
 
     async def execute(self, invocation: ToolInvocation) -> ToolResult:
         params = ReadFileParams(**invocation.params)
@@ -69,5 +72,26 @@ class ReadFileTool(Tool):
 
         if total_lines == 0:
             return ToolResult.success(
-                "File is empty"
+                "File is empty.", metadata={
+                    "lines": 0
+                }
             )
+
+        start_index = max(0, params.offset - 1)
+
+        if params.limit is not None:
+            end_index = min(start_index + params.limit, total_lines)
+        else:
+            end_index = total_lines
+        
+        selected_lines = lines[start_index:end_index]
+        formatted_lines = []
+        
+        for i, line in enumerate(selected_lines, start=start_index):
+            formatted_lines.append(f"{i:6}|{line}")
+        
+        output = "\n".joing(formatted_lines)
+        token_count = count_tokens(output)
+
+        if token_count > self.MAX_OUTPUT_TOKENS:
+            output 
