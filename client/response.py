@@ -39,13 +39,13 @@ class TokenUsage:
 class ToolCallDelta:
     call_id: str
     name: str | None = None
-    arguments_delta: dict[str, Any] = field(default_factory=dict)
+    arguments_delta: str = ""
 
 @dataclass
 class ToolCall:
     call_id: str
     name: str | None = None
-    arguments_delta: str = ""
+    arguments: dict[str, Any] = field(default_factory=dict)
 
 @dataclass
 class StreamEvent:
