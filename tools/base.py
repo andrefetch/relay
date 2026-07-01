@@ -29,12 +29,14 @@ class ToolResult:
     def error_result(
         cls,
         error: str,
-        output: str = ""
+        output: str = "",
+        **kwargs: Any
     ):
         return cls(
             success = False,
             output = output,
             error = error
+            **kwargs,
         )
     
     @classmethod

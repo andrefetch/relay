@@ -1,11 +1,15 @@
 from tools.base import Tool
 from typing import Any
 from pathlib import Path
+from tools.base import ToolResult, ToolInvocation
+from tools.core.read_file import ReadFileTool
 import logging
+
 
 logger = logging.getLogger(__name__)
 
 class ToolRegistry:
+
     def __init__(self):
         self._tools: dict[str, Tool] = {}
     
@@ -26,6 +30,8 @@ class ToolRegistry:
     def get(self, name: str) -> Tool | None:
         if name in self._tools:
             return self._tools[name]
+        
+        return None
     
     def get_tools(self) -> list[Tool]:
         tools: list[Tool]
@@ -39,3 +45,42 @@ class ToolRegistry:
         return [tool.to_openai_schema() for tool in self.get_tools()]
     
     async def invoke(self, name: str, params: dict[str, Any], cwd: Path | None):
+        tool = self.get(name)
+        if tool is None:
+            return ToolResult.error_result(
+                f"Unknown Tool: {name}",
+                metadata={
+                    'tool_name': name
+                },
+            )
+        
+        validiation_errors = tool.validate_params(params)
+        if validiation_errors:
+            return ToolResult.error_result(
+                f"Invalid paramaters: {'; '.join(validiation_errors)}",
+                metadata={
+                    'tool_name': name,
+                    'validation_errors': validiation_errors
+                }
+            )
+        invocation = ToolInvocation(
+            params=params,
+            cwd=cwd,
+        )
+        try:
+            await tool.execute(invocation)
+        except Exception as e:
+            logger.exception(f"Tool {name} raised unexpected error")
+            return ToolResult.error_result(
+                f"Internal error: {(str(e))}",
+                metadata = {
+                    "tool_name", name
+                }
+            )
+        
+def create_default_registery() -> ToolRegistry:
+
+    registery = ToolRegistry()
+    CORE_TOOLS = [ReadFileTool]
+
+    return registery
