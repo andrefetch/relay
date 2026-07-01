@@ -166,9 +166,6 @@ class LLMClient:
                                 )
                             )
 
-        # NOTE: this used to be nested inside "async for chunk in response",
-        # which meant it fired on every single chunk instead of once at the
-        # end. Moved outside the loop so it only runs after streaming ends.
         for index, toolcall in tool_calls.items():
             yield StreamEvent(
                 type=StreamEventType.TOOL_CALL_COMPLETE,
