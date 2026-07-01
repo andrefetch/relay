@@ -1,10 +1,10 @@
-from pathlib import Path
 from __future__ import annotations
+from pathlib import Path
 from typing import AsyncGenerator
 from context.manager import ContextManager
 from agent.events import AgentEvent, AgentEventType
 from client.llm_client import LLMClient
-from client.response import StreamEventType, ToolCall
+from client.response import StreamEventType, ToolCall, ToolResultMessage
 from tools.registry import create_default_registery
 
 class Agent:
@@ -37,7 +37,6 @@ class Agent:
             tools=tool_schemas if tool_schemas else None, 
             stream=True
         ):
-            print(event)
             if event.type == StreamEventType.TEXT_DELTA:
                 if event.text_delta:
                     content = event.text_delta.content
@@ -56,6 +55,8 @@ class Agent:
         if response_text:
             yield AgentEvent.text_complete(response_text)
         
+        tool_call_results: list[ToolResultMessage] = []
+
         for tool_call in tool_calls:
             yield AgentEvent.tool_call_start(
                 tool_call.call_id,
@@ -68,11 +69,36 @@ class Agent:
                 tool_call.arguments,
                 Path.cwd,
             )
+
+            yield AgentEvent.tool_call_complete(
+                tool_call.call_id,
+                tool_call.name,
+                result,
+            )
+
+            tool_call_results.append(
+                ToolResultMessage(
+                    tool_call_id=tool_call.call_id,
+                    content=result.to_model_output(),
+                    is_error=not result.success
+                )
+            )
+
+        for tool_result in tool_call_results:
+            self.context_manager.add_tool_result(
+                tool_result.tool_call_id,
+                tool_result.content,
+            )
     
     async def __aenter__(self) -> Agent:
         return self
     
-    async def __aexit__(self, exc_type, exc_val, exc_tb) -> None:
+    async def __aexit__(
+            self, 
+            exc_type, 
+            exc_val, 
+            exc_tb
+            ) -> None:
 
         if self.client:
             await self.client.close()

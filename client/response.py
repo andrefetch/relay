@@ -57,6 +57,19 @@ class StreamEvent:
     tool_call: ToolCall | None = None
     usage: TokenUsage | None = None
 
+@dataclass
+class ToolResultMessage:
+    tool_call_id: str
+    content: str
+    is_error: bool = False
+
+    def to_openai_message(self) -> dict[str, Any]:
+        return {
+            'role': 'tool',
+            'tool_call_id': self.tool_call_id,
+            'content': self.content
+        }
+
 def parse_tool_call_arguments(arguments_str: str) -> dict[str, Any]:
     if not arguments_str:
         return {}
