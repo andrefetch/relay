@@ -19,7 +19,7 @@ class LLMClient:
     
     async def close(self) -> None:
         if self._client:
-            await self.client.close()
+            await self._client.close()
             self._client = None
 
     async def chat_completion(self, messages: list[dict[str, Any]], stream: bool = True) -> AsyncGenerator[StreamEvent, None]:

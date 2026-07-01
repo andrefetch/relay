@@ -9,7 +9,6 @@ class TextDelta:
     def __str__(self):
         return self.content
 
-@dataclass
 class StreamEventType(str, Enum):
     TEXT_DELTA = "text_delta"
     MESSAGE_COMPLETE = "message_complete"
@@ -29,7 +28,6 @@ class TokenUsage:
             total_tokens=self.total_tokens + other.total_tokens,
             cached_tokens=self.cached_tokens + other.cached_tokens,
         )
-
 
 @dataclass
 class StreamEvent:

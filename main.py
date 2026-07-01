@@ -4,6 +4,7 @@ from agent.events import AgentEventType
 from ui.renderer import TUI, get_console
 import asyncio
 import click
+import sys
 
 console = get_console()
 
@@ -12,10 +13,10 @@ class CLI:
         self.agent : Agent | None = None
         self.tui = TUI()
 
-    async def run_single(self, message: str):
+    async def run_single(self, message: str) -> str | None:
         async with Agent() as agent:
             self.agent = agent
-            self._process_message(message)
+            return await self._process_message(message)
     
     async def _process_message(self, message: str) -> str | None:
         if not self.agent:
@@ -25,6 +26,9 @@ class CLI:
             if event.type == AgentEventType.TEXT_DELTA:
                 content = event.data.get("content", "")
                 self.tui.stream_assistant_delta(content)
+            elif event.type == AgentEventType.AGENT_ERROR:
+                console.print(f"[error]{event.data.get('error')}[/error]")
+                return None
 
 @click.command()
 @click.argument("prompt", required=False)
@@ -37,6 +41,8 @@ def main(
         'content': prompt
     }]
     if prompt:
-        asyncio.run(cli.run_single(prompt))
+        result = asyncio.run(cli.run_single(prompt))
+        if result is None:
+            sys.exit(1)
 
 main()

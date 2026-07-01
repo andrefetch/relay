@@ -26,9 +26,11 @@ AGENT_THEME = Theme(
         "code": "rgb(236,233,216)",          # beige panel
     }
 )
+
 _console: Console | None = None
 
 def get_console() -> Console:
+    global _console
     if _console is None:
         _console = Console(theme=AGENT_THEME, highlight=False)
     
