@@ -3,34 +3,29 @@ from rich.theme import Theme
 
 AGENT_THEME = Theme(
     {
-        # General
-        "info": "tan",
-        "warning": "orange3",
-        "error": "bold dark_red",
-        "success": "dark_sea_green4",
+        "info": "rgb(49,106,197)",           # taskbar blue
+        "warning": "rgb(255,192,0)",         # xp yellow
+        "error": "bold rgb(200,40,40)",      # error red
+        "success": "rgb(70,150,52)",         # start button green
         "dim": "dim",
-        "muted": "grey50",
-        "border": "rgb(120,85,60)",
-        "highlight": "bold rgb(210,150,90)",
+        "muted": "rgb(150,150,150)",         # gray
+        "border": "rgb(0,84,227)",           # title bar blue
+        "highlight": "bold rgb(255,224,0)",  # selection gold
 
-        # Roles
-        "user": "bold rgb(196,148,92)",      # warm tan/camel
-        "assistant": "rgb(222,184,135)",     # burlywood
+        "user": "bold rgb(0,84,227)",        # title bar blue
+        "assistant": "rgb(236,233,216)",     # tahoma beige
 
-        # Tools
-        "tool": "bold rgb(184,134,80)",      # mid brown
-        "tool.read": "rgb(160,120,85)",
-        "tool.write": "rgb(196,160,90)",     # ochre-ish
-        "tool.shell": "rgb(139,90,60)",      # dark brown
-        "tool.network": "rgb(180,140,100)",
-        "tool.memory": "dark_sea_green4",
-        "tool.mcp": "rgb(205,170,125)",
+        "tool": "bold rgb(70,150,52)",       # start button green
+        "tool.read": "rgb(49,106,197)",      # taskbar blue
+        "tool.write": "rgb(255,192,0)",      # yellow
+        "tool.shell": "rgb(128,128,128)",    # cmd.exe gray
+        "tool.network": "rgb(0,153,204)",    # ie blue
+        "tool.memory": "rgb(70,150,52)",     # green
+        "tool.mcp": "rgb(153,102,204)",      # luna purple
 
-        # Code / blocks
-        "code": "rgb(230,210,180)",          # cream
+        "code": "rgb(236,233,216)",          # beige panel
     }
 )
-
 _console: Console | None = None
 
 def get_console() -> Console:
