@@ -62,7 +62,8 @@ def _truncate_by_lines(text: str, target_tokens: int, suffix: str, model: str) -
     return "\n".join(result_lines) + suffix
 
 
-def _truncate_by_chars(text: str, target_tokens: int, suffix: str, model: str) -> str:
+def _truncate_by_chars(
+    text: str, target_tokens: int, suffix: str, model: str) -> str:
     # Binary search for the right length
     low, high = 0, len(text)
 
