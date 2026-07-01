@@ -1,6 +1,8 @@
 from __future__ import annotations
 from dataclasses import dataclass
 from enum import Enum
+import json
+from typing import Any
 
 @dataclass
 class TextDelta:
@@ -54,3 +56,14 @@ class StreamEvent:
     tool_call_delta: ToolCallDelta | None = None
     tool_call: ToolCall | None = None
     usage: TokenUsage | None = None
+
+def parse_tool_call_arguments(arguments_str: str) -> dict[str, Any]:
+    if not arguments_str:
+        return {}
+    
+    try:
+        return json.loads(arguments_str)
+    except json.JSONDecodeError:
+        return {
+            'raw_arguments': arguments_str
+        }

@@ -2,7 +2,7 @@ import math
 import asyncio
 from openai import AsyncOpenAI, RateLimitError, APIConnectionError, APIError
 from typing import Any, AsyncGenerator
-from client.response import TextDelta, TokenUsage, StreamEvent, StreamEventType, ToolCallDelta
+from client.response import TextDelta, TokenUsage, StreamEvent, StreamEventType, ToolCallDelta, ToolCall, parse_tool_call_arguments
 
 class LLMClient:
     def __init__(self) -> None:
@@ -159,11 +159,19 @@ class LLMClient:
                                     type=StreamEventType.TOOL_CALL_DELTA,
                                     tool_call_delta=ToolCallDelta(
                                         call_id=tool_calls[index]['id'],
-                                        name=tool_call_delta.function.name
-                                        arguments_delta=tool_call_delta.function.arguments
+                                        name=tool_call_delta.function.name,
+                                        arguments_delta=tool_call_delta.function.arguments,
                                     )
                                 )
-            
+            for index, toolcall in tool_calls.items():
+                yield StreamEvent(
+                                    type=StreamEventType.MESSAGE_COMPLETE,
+                                    tool_call=ToolCall(
+                                        call_id=toolcall['id'],
+                                        name=toolcall['name'],
+                                        arguments=parse_tool_call_arguments(toolcall['arguments']),
+                                    )
+                                )
         yield StreamEvent(
             type=StreamEventType.MESSAGE_COMPLETE,
             finish_reason=finish_reason,
