@@ -21,6 +21,9 @@ class ToolResult:
     output: str
     error: str | None = None
     metadata: dict[str, Any] = field(default_factory=dict)
+    
+    # if files are long, we have to truncate.
+    truncated: bool = False
 
     @classmethod
     def error_result(
