@@ -34,7 +34,7 @@ class ToolRegistry:
         return None
     
     def get_tools(self) -> list[Tool]:
-        tools: list[Tool]
+        tools: list[Tool] = []
 
         for tool in self._tools.values():
             tools.append(tool)
@@ -68,13 +68,13 @@ class ToolRegistry:
             cwd=cwd,
         )
         try:
-            await tool.execute(invocation)
+            return await tool.execute(invocation)
         except Exception as e:
             logger.exception(f"Tool {name} raised unexpected error")
             return ToolResult.error_result(
                 f"Internal error: {(str(e))}",
                 metadata = {
-                    "tool_name", name
+                    "tool_name": name
                 }
             )
         
