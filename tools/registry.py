@@ -2,7 +2,7 @@ from tools.base import Tool
 from typing import Any
 from pathlib import Path
 from tools.base import ToolResult, ToolInvocation
-from tools.core.read_file import ReadFileTool
+from tools.core import ReadFileTool, get_all_core_tools
 import logging
 
 
@@ -41,7 +41,7 @@ class ToolRegistry:
         
         return tools
     
-    def get_schema(self) -> list[dict[str, Any]]:
+    def get_schemas(self) -> list[dict[str, Any]]:
         return [tool.to_openai_schema() for tool in self.get_tools()]
     
     async def invoke(self, name: str, params: dict[str, Any], cwd: Path | None):
@@ -81,6 +81,8 @@ class ToolRegistry:
 def create_default_registery() -> ToolRegistry:
 
     registery = ToolRegistry()
-    CORE_TOOLS = [ReadFileTool]
+    
+    for tool_class in get_all_core_tools():
+        registery.register(tool_class())
 
     return registery
