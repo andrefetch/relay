@@ -108,6 +108,39 @@ class TUI:
             return None
 
         return start_line, "\n".join(code_lines)
+    
+    def _guess_language(self, path: str | None) -> str:
+        if not path:
+            return "text"
+        suffix = Path(path).suffix.lower()
+        return {
+            ".py": "python",
+            ".js": "javascript",
+            ".jsx": "jsx",
+            ".ts": "typescript",
+            ".tsx": "tsx",
+            ".json": "json",
+            ".toml": "toml",
+            ".yaml": "yaml",
+            ".yml": "yaml",
+            ".md": "markdown",
+            ".sh": "bash",
+            ".bash": "bash",
+            ".zsh": "bash",
+            ".rs": "rust",
+            ".go": "go",
+            ".java": "java",
+            ".kt": "kotlin",
+            ".swift": "swift",
+            ".c": "c",
+            ".h": "c",
+            ".cpp": "cpp",
+            ".hpp": "cpp",
+            ".css": "css",
+            ".html": "html",
+            ".xml": "xml",
+            ".sql": "sql",
+        }.get(suffix, "text")
 
     def _render_args_table(self, tool_name: str, args: dict[str, Any]) -> Table:
         table = Table.grid(padding=(0, 1))
@@ -183,16 +216,10 @@ class TUI:
 
         if name == "read_file" and success:
             start_line, code = self._extract_read_file_code(output)
-            shown_start = None
-            shown_end = None
-            total_lines = None
 
             shown_start = metadata.get('shown_start')
             shown_end = metadata.get('shown_end')
             total_lines = metadata.get('total_lines')
-
-
-
 
         self._extract_read_file_code(output)
 
