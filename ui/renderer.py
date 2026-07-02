@@ -2,6 +2,8 @@ from rich.console import Console
 from rich.theme import Theme
 from rich.rule import Rule
 from rich.text import Text
+from rich.panel import Panel
+from rich.table import Table
 from typing import Any
 
 AGENT_THEME = Theme(
@@ -57,6 +59,31 @@ class TUI:
     
     def stream_assistant_delta(self, content: str) -> None:
         self.console.print(content, end="", markup=False)
+    
+    def _ordered_args(self, tool_name: str, args: dict[str, Any]) -> list[tuple]:
+        _ORDER = {
+            'read_File': ['path', 'offset', 'limit']
+        }
+
+        preferred = _ORDER.get(tool_name, [])
+        ordered: list[tuple[str, Any]] = []
+        seen = set() # added a set so the LLM can't hallucinate and add the same thing twice, a set automatically removes duplicates
+
+        for key in preferred:
+            if key in args:
+                ordered.append((key, args[key]))
+                seen.add(key)
+        
+        remaining_keys = set(args.keys() - seen)
+        ordered.extend((key, args[key] for key in remaining_keys))
+
+        return ordered
+
+
+    def _render_args_table(self, tool_name: str, args: dict[str, Any]) -> Table:
+        table = Table.grid(padding=(0, 1))
+        table.add_column(style='muted', justify='right', no_wrap=True)
+        table.add_column(style='code', overflow="fold")
 
     def tool_call_start(
             self,
@@ -66,4 +93,15 @@ class TUI:
             arguments: dict[str, Any],
             ) -> None:
         self.tool_args_by_call_id[call_id] = arguments
-        border_style = f"tool.{tool_kind}" if tool_kind
+        border_style = f"tool.{tool_kind}" if tool_kind else "tool"
+
+        title = Text.assemble(
+            ("● ", "muted"),
+            (name, "tool")
+            (" ", "muted")
+            (f"#{call_id[:8]}", "muted")
+        )
+
+        panel = Panel(
+            title=
+        )
