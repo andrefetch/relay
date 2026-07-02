@@ -124,7 +124,7 @@ class TUI:
         lines.append(Text(f"cwd: {self.cwd}", style="muted", justify="center"))
         if model:
             lines.append(Text(f"model: {model}", style="muted", justify="center"))
-        lines.append(Text("type \\exit to quit", style="muted", justify="center"))
+        lines.append(Text("commands: /help /config /approval /model /exit", style="muted", justify="center"))
 
         panel = Panel(
             Group(*lines),
