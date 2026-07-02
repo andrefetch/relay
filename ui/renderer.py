@@ -4,7 +4,11 @@ from rich.rule import Rule
 from rich.text import Text
 from rich.panel import Panel
 from rich.table import Table
-from typing import Any
+from rich import box
+
+from utils.paths import display_path_relative_to_cwd
+from typing import Any, Tuple
+from pathlib import Path
 
 AGENT_THEME = Theme(
     {
@@ -32,6 +36,8 @@ AGENT_THEME = Theme(
     }
 )
 
+SPINNER_FRAMES = "⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏"
+
 _console: Console | None = None
 
 def get_console() -> Console:
@@ -46,6 +52,9 @@ class TUI:
         self.console = console or get_console()
         self._assistant_stream_open = False
         self.tool_args_by_call_id: dict[str, dict[str, Any]] = {}
+        self.cwd = Path.cwd()
+        self._spinner_index = 0
+        self._spinner_timer = None
     
     def begin_assistant(self) -> None:
         self.console.print()
@@ -60,13 +69,13 @@ class TUI:
     def stream_assistant_delta(self, content: str) -> None:
         self.console.print(content, end="", markup=False)
     
-    def _ordered_args(self, tool_name: str, args: dict[str, Any]) -> list[tuple]:
+    def _ordered_args(self, tool_name: str, args: dict[str, Any]) -> list[Tuple]:
         _ORDER = {
             'read_File': ['path', 'offset', 'limit']
         }
 
         preferred = _ORDER.get(tool_name, [])
-        ordered: list[tuple[str, Any]] = []
+        ordered: list[Tuple[str, Any]] = []
         seen = set() # added a set so the LLM can't hallucinate and add the same thing twice, a set automatically removes duplicates
 
         for key in preferred:
@@ -75,7 +84,7 @@ class TUI:
                 seen.add(key)
         
         remaining_keys = set(args.keys() - seen)
-        ordered.extend((key, args[key] for key in remaining_keys))
+        ordered.extend((key, args[key]) for key in remaining_keys)
 
         return ordered
 
@@ -85,11 +94,16 @@ class TUI:
         table.add_column(style='muted', justify='right', no_wrap=True)
         table.add_column(style='code', overflow="fold")
 
+        for key, value in self._ordered_args(tool_name, args):
+            table.add_row(key, value)
+        
+        return table
+
     def tool_call_start(
             self,
             call_id: str,
             name: str, 
-            tool_kind: str,
+            tool_kind: str | None,
             arguments: dict[str, Any],
             ) -> None:
         self.tool_args_by_call_id[call_id] = arguments
@@ -97,11 +111,26 @@ class TUI:
 
         title = Text.assemble(
             ("● ", "muted"),
-            (name, "tool")
-            (" ", "muted")
-            (f"#{call_id[:8]}", "muted")
+            (f"{name}:", "tool"),
+            (" ", "muted"),
+            (f"#{call_id[:8]}", "muted"),
         )
 
+        display_args = dict(arguments)
+        for key in ('path', 'cwd'):
+            val = display_args.get(key) 
+            if isinstance(val, str) and self.cwd:
+                display_args[key] = str(display_path_relative_to_cwd(val, self.cwd))
+
         panel = Panel(
-            title=
+            self._render_args_table(name, display_args) if display_args else Text('(no arguments)', style='muted'),
+            title=title,
+            title_align="left",
+            subtitle=Text('running', style='muted'),
+            subtitle_align='right',
+            border_style=border_style,
+            box=box.ROUNDED,
+            padding=(1, 2)
         )
+        self.console.print()
+        self.console.print(panel)

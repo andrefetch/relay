@@ -48,6 +48,12 @@ class CLI:
                     tool_kind = None
                 
                 tool_kind = tool.kind.value
+                self.tui.tool_call_start(
+                    event.data.get('call_id', ''),
+                    tool_name,
+                    tool_kind,
+                    event.data.get('arguments', {}),
+                )
         
         return final_response
 
