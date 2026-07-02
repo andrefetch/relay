@@ -36,8 +36,6 @@ AGENT_THEME = Theme(
     }
 )
 
-SPINNER_FRAMES = "⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏"
-
 _console: Console | None = None
 
 def get_console() -> Console:
@@ -53,8 +51,6 @@ class TUI:
         self._assistant_stream_open = False
         self.tool_args_by_call_id: dict[str, dict[str, Any]] = {}
         self.cwd = Path.cwd()
-        self._spinner_index = 0
-        self._spinner_timer = None
     
     def begin_assistant(self) -> None:
         self.console.print()
