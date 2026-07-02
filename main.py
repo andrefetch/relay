@@ -42,6 +42,12 @@ class CLI:
                 return None
             elif event.type == AgentEventType.TOOL_CALL_START:
                 tool_name = event.data.get("name", "unknown")
+                tool_kind = None
+                tool = self.agent.tool_registery.get(tool_name)
+                if not tool:
+                    tool_kind = None
+                
+                tool_kind = tool.kind.value
         
         return final_response
 
