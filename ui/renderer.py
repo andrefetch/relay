@@ -45,6 +45,20 @@ AGENT_THEME = Theme(
 SPINNER_FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]
 SPINNER_INTERVAL = 0.08
 
+RELAY_VERSION = "0.1"
+
+RELAY_LOGO = r"""|_______\           |__\
+| $$$$$$$\  ______  | $$  ______   __    __
+| $$__| $$ /      \ | $$ |      \ |  \  |  \
+| $$    $$|  $$$$$$\| $$  \$$$$$$\| $$  | $$
+| $$$$$$$\| $$    $$| $$ /      $$| $$  | $$
+| $$  | $$| $$$$$$$$| $$|  $$$$$$$| $$__/ $$
+| $$  | $$ \$$     \| $$ \$$    $$ \$$    $$
+ \$$   \$$  \$$$$$$$ \$$  \$$$$$$$ _\$$$$$$$
+                                  |  \__| $$
+                                   \$$    $$
+                                    \$$$$$$ """
+
 _console: Console | None = None
 
 def get_console() -> Console:
@@ -100,6 +114,25 @@ class TUI:
         if self._thinking_live is not None:
             self._thinking_live.stop()
             self._thinking_live = None
+
+    def input_prompt(self) -> str:
+        return "\n[user]>[/user] "
+
+    def welcome(self, model: str | None = None) -> None:
+        lines = [Text(RELAY_LOGO, style="info", justify="center"), Text("")]
+        lines.append(Text.assemble(("relay", "bold info"), (f" — v{RELAY_VERSION}", "muted"), justify="center"))
+        lines.append(Text(f"cwd: {self.cwd}", style="muted", justify="center"))
+        if model:
+            lines.append(Text(f"model: {model}", style="muted", justify="center"))
+        lines.append(Text("type \\exit to quit", style="muted", justify="center"))
+
+        panel = Panel(
+            Group(*lines),
+            border_style="border",
+            box=box.ROUNDED,
+            padding=(1, 2),
+        )
+        self.console.print(panel)
 
     def begin_assistant(self) -> None:
         self.console.print()

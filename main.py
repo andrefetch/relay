@@ -21,15 +21,18 @@ class CLI:
     async def run_interactive(self) -> str | None:
         async with Agent() as agent:
             self.agent = agent
+            self.tui.welcome(
+                'cohere/north-mini-code:free'
+            )
 
             while True:
                 try:
-                    user_input = console.input("\n[user]>[/user]").strip()
+                    user_input = console.input(self.tui.input_prompt()).strip()
                     if not user_input:
                         continue
                     await self._process_message(user_input)
                 except KeyboardInterrupt:
-                    console.print("\n[dim]Use \exit to quit[/dim]")
+                    console.print("\n[dim]Use /exit to quit[/dim]")
                 except EOFError:
                     break
             
