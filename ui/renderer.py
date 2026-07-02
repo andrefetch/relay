@@ -1,15 +1,18 @@
-from rich.console import Console
+from rich.console import Console, Group
 from rich.theme import Theme
 from rich.rule import Rule
 from rich.text import Text
 from rich.panel import Panel
 from rich.table import Table
 from rich import box
+from rich.syntax import Syntax
 
 from utils.paths import display_path_relative_to_cwd
 from typing import Any, Tuple
 from pathlib import Path
 import re
+
+from utils.text import truncate_text
 
 AGENT_THEME = Theme(
     {
@@ -96,7 +99,7 @@ class TUI:
         start_line: int | None = None
 
         for line in body.splitlines():
-            m = re.match(r"^s*(\d+)\|(.*)$", line)
+            m = re.match(r"^\s*(\d+)\|(.*)$", line)
             if not m:
                 return None
             line_number = int(m.group(1))
@@ -211,29 +214,56 @@ class TUI:
         )
 
         primary_path = None
+        blocks = []
         if isinstance(metadata, dict) and isinstance(metadata.get('path'), str):
             primary_path = metadata.get('path')
 
         if name == "read_file" and success:
-            start_line, code = self._extract_read_file_code(output)
+            if primary_path:
+                result = self._extract_read_file_code(output)
+                if result is None:
+                    start_line, code = 1, output
+                else:
+                    start_line, code = result
 
-            shown_start = metadata.get('shown_start')
-            shown_end = metadata.get('shown_end')
-            total_lines = metadata.get('total_lines')
+                shown_start = metadata.get('shown_start')
+                shown_end = metadata.get('shown_end')
+                total_lines = metadata.get('total_lines')
+                programming_lang = self._guess_language(primary_path)
 
-        self._extract_read_file_code(output)
+                header_parts = [str(display_path_relative_to_cwd(primary_path, self.cwd)), " ● "]
+                if shown_start and shown_end and total_lines:
+                    header_parts.append(f"lines {shown_start} - {shown_end} of {total_lines}")
+                header = "".join(header_parts)
 
-        display_args = dict(arguments)
-        for key in ('path', 'cwd'):
-            val = display_args.get(key) 
-            if isinstance(val, str) and self.cwd:
-                display_args[key] = str(display_path_relative_to_cwd(val, self.cwd))
+                blocks.append(Text(header, style='muted'))
+                blocks.append(Syntax(
+                    code,
+                    programming_lang,
+                    theme='monokai',
+                    line_numbers=True,
+                    start_line=start_line,
+                    word_wrap=False,
+                ))
+            else:
+                output_display = truncate_text(output, "", 240, )
+                blocks.append(Syntax(
+                    output_display,
+                    'text',
+                    theme='monokai',
+                    word_wrap=False
+                ))
+            
+        if truncated:
+            blocks.append(Text('Tool output was truncated', style='warning'))
 
         panel = Panel(
-            self._render_args_table(name, display_args) if display_args else Text('(no arguments)', style='muted'),
+            Group(
+                *blocks,
+            ),
             title=title,
             title_align="left",
-            subtitle=Text('running', style='muted'),
+            subtitle=Text('done' if success else 'failed', style=status_style),
             subtitle_align='right',
             border_style=border_style,
             box=box.ROUNDED,
