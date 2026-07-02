@@ -9,6 +9,7 @@ from rich import box
 from utils.paths import display_path_relative_to_cwd
 from typing import Any, Tuple
 from pathlib import Path
+import re
 
 AGENT_THEME = Theme(
     {
@@ -84,6 +85,29 @@ class TUI:
 
         return ordered
 
+    def _extract_read_file_code(self, text: str) -> tuple[int, str] | None:
+        body = text
+        header_match = re.match(r"^showing lines (\d+)-(\d+) of (\d+)\n\n", text)
+
+        if header_match:
+            body = text[header_match.end() :]
+        
+        code_lines: list[str] = []
+        start_line: int | None = None
+
+        for line in body.splitlines():
+            m = re.match(r"^s*(\d+)\|(.*)$", line)
+            if not m:
+                return None
+            line_number = int(m.group(1))
+            if start_line is None:
+                start_line = line_number
+            code_lines.append(m.group(2))
+        
+        if start_line is None:
+            return None
+
+        return start_line, "\n".join(code_lines)
 
     def _render_args_table(self, tool_name: str, args: dict[str, Any]) -> Table:
         table = Table.grid(padding=(0, 1))
@@ -111,6 +135,66 @@ class TUI:
             (" ", "muted"),
             (f"#{call_id[:8]}", "muted"),
         )
+
+        display_args = dict(arguments)
+        for key in ('path', 'cwd'):
+            val = display_args.get(key) 
+            if isinstance(val, str) and self.cwd:
+                display_args[key] = str(display_path_relative_to_cwd(val, self.cwd))
+
+        panel = Panel(
+            self._render_args_table(name, display_args) if display_args else Text('(no arguments)', style='muted'),
+            title=title,
+            title_align="left",
+            subtitle=Text('running', style='muted'),
+            subtitle_align='right',
+            border_style=border_style,
+            box=box.ROUNDED,
+            padding=(1, 2)
+        )
+        self.console.print()
+        self.console.print(panel)
+
+    def tool_call_complete(
+            self,
+            call_id: str,
+            name: str, 
+            tool_kind: str | None,
+            success: bool,
+            output: str,
+            error: str | None,
+            metadata: dict[str, Any] | None,
+            truncated: bool,
+            ) -> None:
+        border_style = f"tool.{tool_kind}" if tool_kind else "tool"
+        status_icon = '✓' if success else '✗'
+        status_style = 'success' if success else 'error'
+
+        title = Text.assemble(
+            (f"{status_icon} ", f"{status_style}"),
+            (f"{name}:", "tool"),
+            (" ", "muted"),
+            (f"#{call_id[:8]}", "muted"),
+        )
+
+        primary_path = None
+        if isinstance(metadata, dict) and isinstance(metadata.get('path'), str):
+            primary_path = metadata.get('path')
+
+        if name == "read_file" and success:
+            start_line, code = self._extract_read_file_code(output)
+            shown_start = None
+            shown_end = None
+            total_lines = None
+
+            shown_start = metadata.get('shown_start')
+            shown_end = metadata.get('shown_end')
+            total_lines = metadata.get('total_lines')
+
+
+
+
+        self._extract_read_file_code(output)
 
         display_args = dict(arguments)
         for key in ('path', 'cwd'):

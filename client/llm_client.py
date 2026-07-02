@@ -14,7 +14,7 @@ class LLMClient:
         if self._client is None:
             # TODO: wire up to your own config system instead of hardcoding
             self._client = AsyncOpenAI(
-                api_key="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",
+                api_key="",
                 base_url="https://openrouter.ai/api/v1",
             )
         return self._client
