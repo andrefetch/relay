@@ -4,12 +4,14 @@ from rich.rule import Rule
 from rich.text import Text
 from rich.panel import Panel
 from rich.table import Table
+from rich.live import Live
 from rich import box
 from rich.syntax import Syntax
 
 from utils.paths import display_path_relative_to_cwd
 from typing import Any, Tuple
 from pathlib import Path
+import asyncio
 import re
 
 from utils.text import truncate_text
@@ -40,6 +42,9 @@ AGENT_THEME = Theme(
     }
 )
 
+SPINNER_FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]
+SPINNER_INTERVAL = 0.08
+
 _console: Console | None = None
 
 def get_console() -> Console:
@@ -55,7 +60,47 @@ class TUI:
         self._assistant_stream_open = False
         self.tool_args_by_call_id: dict[str, dict[str, Any]] = {}
         self.cwd = Path.cwd()
-    
+        self._thinking_live: Live | None = None
+        self._thinking_task: asyncio.Task | None = None
+        self._thinking_frame = 0
+        self._thinking_label = ""
+
+    def _thinking_renderable(self) -> Text:
+        frame = SPINNER_FRAMES[self._thinking_frame % len(SPINNER_FRAMES)]
+        return Text.assemble((f"{frame} ", "muted"), (self._thinking_label, "muted"))
+
+    async def _animate_thinking(self) -> None:
+        try:
+            while True:
+                await asyncio.sleep(SPINNER_INTERVAL)
+                self._thinking_frame += 1
+                if self._thinking_live is not None:
+                    self._thinking_live.update(self._thinking_renderable())
+        except asyncio.CancelledError:
+            pass
+
+    def start_thinking(self, label: str = "Thinking…") -> None:
+        if self._thinking_live is not None:
+            return
+        self._thinking_frame = 0
+        self._thinking_label = label
+        self._thinking_live = Live(
+            self._thinking_renderable(),
+            console=self.console,
+            refresh_per_second=1 / SPINNER_INTERVAL,
+            transient=True,
+        )
+        self._thinking_live.start()
+        self._thinking_task = asyncio.create_task(self._animate_thinking())
+
+    def stop_thinking(self) -> None:
+        if self._thinking_task is not None:
+            self._thinking_task.cancel()
+            self._thinking_task = None
+        if self._thinking_live is not None:
+            self._thinking_live.stop()
+            self._thinking_live = None
+
     def begin_assistant(self) -> None:
         self.console.print()
         self.console.print(Rule(Text("Assistant", style="assistant")))

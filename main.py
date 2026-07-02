@@ -18,15 +18,28 @@ class CLI:
             self.agent = agent
             return await self._process_message(message)
     
+    async def run_interactive(self) -> str | None:
+        async with Agent() as agent:
+            self.agent = agent
+
+            while True:
+                try:
+                    user_input = console.input("\n[user]>[/user]").strip()
+                    if not user_input:
+                        continue
+                    await self._process_message(user_input)
+                except KeyboardInterrupt:
+                    console.print("\n[dim]Use \exit to quit[/dim]")
+                except EOFError:
+                    break
+            
+            console.print("\n[dim]Exiting.[/dim]")
+    
     def _get_tool_kind(self, tool_name: str) -> str | None:
-        tool_kind = None
         tool = self.agent.tool_registery.get(tool_name)
         if not tool:
-            tool_kind = None
-        
-        tool_kind = tool.kind.value
-
-        return tool_kind
+            return None
+        return tool.kind.value
     
     async def _process_message(self, message: str) -> str | None:
         if not self.agent:
@@ -34,45 +47,58 @@ class CLI:
         
         assistant_streaming = False
         final_response: str | None = None
+        thinking = False
 
-        async for event in self.agent.run(message):
-            if event.type == AgentEventType.TEXT_DELTA:
-                content = event.data.get("content", "")
-                if not assistant_streaming:
-                    self.tui.begin_assistant()
-                    assistant_streaming = True
-                self.tui.stream_assistant_delta(content)
-            elif event.type == AgentEventType.TEXT_COMPLETE:
-                final_response = event.data.get("content")
-                if assistant_streaming:
-                    self.tui.end_assistant()
-                    assistant_streaming = False
-            elif event.type == AgentEventType.AGENT_ERROR:
-                console.print(f"[error]{event.data.get('error')}[/error]")
-                return None
-            elif event.type == AgentEventType.TOOL_CALL_START:
-                tool_name = event.data.get("name", "unknown")
-                tool_kind = self._get_tool_kind(tool_name)
-                self.tui.tool_call_start(
-                    event.data.get('call_id', ''),
-                    tool_name,
-                    tool_kind,
-                    event.data.get('arguments', {}),
-                )
-            elif event.type  == AgentEventType.TOOL_CALL_COMPLETE:
-                tool_name = event.data.get('name', 'unknown')
-                tool_kind = self._get_tool_kind(tool_name)
-                self.tui.tool_call_complete(
-                    event.data.get('call_id', ''),
-                    tool_name,
-                    tool_kind,
-                    event.data.get('success', False),
-                    event.data.get('output', ""),
-                    event.data.get('error'),
-                    event.data.get('metadata'),
-                    event.data.get('truncated', False),
-                )
-        
+        try:
+            async for event in self.agent.run(message):
+                if event.type == AgentEventType.AGENT_START:
+                    self.tui.start_thinking()
+                    thinking = True
+                    continue
+
+                if thinking:
+                    self.tui.stop_thinking()
+                    thinking = False
+
+                if event.type == AgentEventType.TEXT_DELTA:
+                    content = event.data.get("content", "")
+                    if not assistant_streaming:
+                        self.tui.begin_assistant()
+                        assistant_streaming = True
+                    self.tui.stream_assistant_delta(content)
+                elif event.type == AgentEventType.TEXT_COMPLETE:
+                    final_response = event.data.get("content")
+                    if assistant_streaming:
+                        self.tui.end_assistant()
+                        assistant_streaming = False
+                elif event.type == AgentEventType.AGENT_ERROR:
+                    console.print(f"[error]{event.data.get('error')}[/error]")
+                    return None
+                elif event.type == AgentEventType.TOOL_CALL_START:
+                    tool_name = event.data.get("name", "unknown")
+                    tool_kind = self._get_tool_kind(tool_name)
+                    self.tui.tool_call_start(
+                        event.data.get('call_id', ''),
+                        tool_name,
+                        tool_kind,
+                        event.data.get('arguments', {}),
+                    )
+                elif event.type  == AgentEventType.TOOL_CALL_COMPLETE:
+                    tool_name = event.data.get('name', 'unknown')
+                    tool_kind = self._get_tool_kind(tool_name)
+                    self.tui.tool_call_complete(
+                        event.data.get('call_id', ''),
+                        tool_name,
+                        tool_kind,
+                        event.data.get('success', False),
+                        event.data.get('output', ""),
+                        event.data.get('error'),
+                        event.data.get('metadata'),
+                        event.data.get('truncated', False),
+                    )
+        finally:
+            self.tui.stop_thinking()
+
         return final_response
 
 @click.command()
@@ -81,13 +107,14 @@ def main(
     prompt: str | None,
 ):
     cli = CLI()
-    messages = [{
-        'role': 'user',
-        'content': prompt
-    }]
     if prompt:
         result = asyncio.run(cli.run_single(prompt))
         if result is None:
             sys.exit(1)
+        else:
+            asyncio.run(cli.run_interactive())
+    else:
+        asyncio.run(cli.run_interactive())
 
-main()
+if __name__ == "__main__": # better than just main() ngl
+    main()
