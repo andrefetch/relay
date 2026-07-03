@@ -53,7 +53,7 @@ class LLMClient:
         client = self.get_client()
 
         kwargs = {
-            "model": "cohere/north-mini-code:free",
+            "model": "poolside/laguna-xs-2.1:free",
             "messages": messages,
             "stream": stream,
         }

@@ -22,7 +22,7 @@ class CLI:
         async with Agent() as agent:
             self.agent = agent
             self.tui.welcome(
-                'cohere/north-mini-code:free'
+                'poolside/laguna-xs-2.1:free'
             )
 
             while True:

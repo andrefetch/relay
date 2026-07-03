@@ -30,7 +30,7 @@ class MessageItem:
 class ContextManager:
     def __init__(self) -> None:
         self._system_prompt = get_system_prompt()
-        self._model_name = "cohere/north-mini-code:free"
+        self._model_name = "poolside/laguna-xs-2.1:free"
         self._messages: list[MessageItem] = []
     
     def add_user_message(self, content):
