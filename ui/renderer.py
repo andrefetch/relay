@@ -13,6 +13,7 @@ from prompt_toolkit.formatted_text import HTML
 from prompt_toolkit.styles import Style
 from prompt_toolkit.history import InMemoryHistory
 
+from config.config import Config
 from utils.paths import display_path_relative_to_cwd
 from typing import Any, Tuple
 from pathlib import Path
@@ -75,11 +76,12 @@ def get_console() -> Console:
     return _console
 
 class TUI:
-    def __init__(self, console: Console | None = None) -> None:
+    def __init__(self, config: Config, console: Console | None = None) -> None:
         self.console = console or get_console()
         self._assistant_stream_open = False
         self.tool_args_by_call_id: dict[str, dict[str, Any]] = {}
-        self.cwd = Path.cwd()
+        self.config = config
+        self.cwd = self.config.cwd
         self._thinking_live: Live | None = None
         self._thinking_task: asyncio.Task | None = None
         self._thinking_frame = 0

@@ -1,0 +1,15 @@
+# relay configuration
+# System-level defaults. A project-level .relay/config.toml (in your cwd)
+# is merged on top of this and takes precedence.
+#
+# Note: api_key and base_url are NOT set here, they come from the
+# API_KEY and BASE_URL environment variables.
+
+max_turns = 100
+max_tool_output_tokens = 50000
+debug = false
+
+[model]
+name = "poolside/laguna-xs-2.1:free"
+temperature = 1.0
+context_window = 256000

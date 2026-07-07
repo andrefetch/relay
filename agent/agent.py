@@ -85,7 +85,7 @@ class Agent:
             result = await self.tool_registery.invoke(
                 tool_call.name,
                 tool_call.arguments,
-                Path.cwd(),
+                self.config.cwd,
             )
 
             yield AgentEvent.tool_call_complete(
