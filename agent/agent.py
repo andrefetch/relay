@@ -1,26 +1,19 @@
 from __future__ import annotations
 import json
-from pathlib import Path
 from typing import AsyncGenerator
+from agent.session import Session
 from config.config import Config
-from context.manager import ContextManager
 from agent.events import AgentEvent, AgentEventType
-from client.llm_client import LLMClient
 from client.response import StreamEventType, ToolCall, ToolResultMessage
-from tools.registry import create_default_registery
 
 class Agent:
     def __init__(self, config: Config):
         self.config = config
-        self.client = LLMClient(
-            config=config,
-        )
-        self.context_manager = ContextManager(config=config)
-        self.tool_registery = create_default_registery()
-    
+        self.session = Session()
+
     async def run(self, message: str):
         yield AgentEvent.agent_start(message)
-        self.context_manager.add_user_message(message)
+        self.session.context_manager.add_user_message(message)
 
         async for event in self._agentic_loop():
             yield event
@@ -38,7 +31,7 @@ class Agent:
 
             response_text = ""
 
-            tool_schemas = self.tool_registery.get_schemas()
+            tool_schemas = self.session.tool_registery.get_schemas()
             tool_calls: list[ToolCall] = []
             
             async for event in self.client.chat_completion(
@@ -57,7 +50,7 @@ class Agent:
                 elif event.type == StreamEventType.ERROR:
                     yield AgentEvent.agent_error(event.error or "Unknown error occured.")
             
-            self.context_manager.add_assistant_message(
+            self.session.context_manager.add_assistant_message(
                 response_text or None,
                 [
                     {
@@ -89,7 +82,7 @@ class Agent:
                     tool_call.arguments
                 )
 
-                result = await self.tool_registery.invoke(
+                result = await self.session.tool_registery.invoke(
                     tool_call.name,
                     tool_call.arguments,
                     self.config.cwd,
@@ -110,7 +103,7 @@ class Agent:
                 )
 
             for tool_result in tool_call_results:
-                self.context_manager.add_tool_result(
+                self.session.context_manager.add_tool_result(
                     tool_result.tool_call_id,
                     tool_result.content,
                 )
