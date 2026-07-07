@@ -29,7 +29,6 @@ class AgentError(Exception):
             "cause": str(self.cause) if self.cause else None,
         }
 
-
 class ConfigError(AgentError):
     def __init__(
         self,
