@@ -17,14 +17,14 @@ def get_system_prompt(config: Config) -> str:
     # Security guidelines
     parts.append(_get_security_section())
 
-    # Operational guidelines
-    parts.append(_get_operational_section())
-
     if config.developer_instructions:
         parts.append(_get_developer_instructions_section(config.developer_instructions))
 
     if config.user_instructions:
         parts.append(_get_user_instructions_section(config.user_instructions))
+    
+    # Operational guidelines
+    parts.append(_get_operational_section())
 
     return "\n\n".join(parts)
 
