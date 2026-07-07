@@ -17,33 +17,35 @@ from utils.paths import display_path_relative_to_cwd
 from typing import Any, Tuple
 from pathlib import Path
 import asyncio
+import math
 import re
 
 from utils.text import truncate_text
 
 AGENT_THEME = Theme(
     {
-        "info": "rgb(49,106,197)",           # taskbar blue
-        "warning": "rgb(255,192,0)",         # xp yellow
-        "error": "bold rgb(200,40,40)",      # error red
-        "success": "rgb(70,150,52)",         # start button green
+        "info": "rgb(130,150,180)",          # slate-blue accent
+        "warning": "rgb(200,170,120)",       # muted sand (warnings)
+        "error": "bold rgb(200,90,90)",      # kept red for legibility
+        "success": "rgb(120,170,160)",       # muted teal
         "dim": "dim",
-        "muted": "rgb(150,150,150)",         # gray
-        "border": "rgb(0,84,227)",           # title bar blue
-        "highlight": "bold rgb(255,224,0)",  # selection gold
+        "muted": "rgb(120,124,132)",         # graphite grey
+        "subtitle": "rgb(176,180,188)",      # soft silver (dimmer than highlight)
+        "border": "rgb(88,94,104)",          # dim slate border
+        "highlight": "bold rgb(224,226,232)", # bright silver
 
-        "user": "bold rgb(0,84,227)",        # title bar blue
-        "assistant": "rgb(236,233,216)",     # tahoma beige
+        "user": "bold rgb(224,226,232)",     # bright silver
+        "assistant": "rgb(176,180,188)",     # soft grey
 
-        "tool": "bold rgb(70,150,52)",       # start button green
-        "tool.read": "rgb(49,106,197)",      # taskbar blue
-        "tool.write": "rgb(255,192,0)",      # yellow
-        "tool.shell": "rgb(128,128,128)",    # cmd.exe gray
-        "tool.network": "rgb(0,153,204)",    # ie blue
-        "tool.memory": "rgb(70,150,52)",     # green
-        "tool.mcp": "rgb(153,102,204)",      # luna purple
+        "tool": "bold rgb(130,150,180)",     # slate-blue accent
+        "tool.read": "rgb(140,158,184)",     # lighter slate
+        "tool.write": "rgb(176,180,188)",    # soft grey
+        "tool.shell": "rgb(120,124,132)",    # graphite
+        "tool.network": "rgb(120,170,160)",  # muted teal
+        "tool.memory": "rgb(150,150,168)",   # cool silver-violet
+        "tool.mcp": "rgb(150,150,168)",      # cool silver-violet
 
-        "code": "rgb(236,233,216)",          # beige panel
+        "code": "rgb(176,180,188)",          # soft grey
     }
 )
 
@@ -52,18 +54,16 @@ SPINNER_INTERVAL = 0.08
 
 RELAY_VERSION = "0.1"
 
-RELAY_LOGO = r"""
-|_______\           |__\
-| $$$$$$$\  ______  | $$  ______   __    __
-| $$__| $$ /      \ | $$ |      \ |  \  |  \
-| $$    $$|  $$$$$$\| $$  \$$$$$$\| $$  | $$
-| $$$$$$$\| $$    $$| $$ /      $$| $$  | $$
-| $$  | $$| $$$$$$$$| $$|  $$$$$$$| $$__/ $$
-| $$  | $$ \$$     \| $$ \$$    $$ \$$    $$
- \$$   \$$  \$$$$$$$ \$$  \$$$$$$$ _\$$$$$$$
-                                  |  \__| $$
-                                   \$$    $$
-                                    \$$$$$$ """
+RELAY_LOGO = """\
+⣠⣤⣤⡤⠤⢤⣤⣀⡀⠀⠐⠒⡄⠀⡠⠒⠀⠀⢀⣀⣤⠤⠤⣤⣤⣤⡄
+⠈⠻⣿⡤⠤⡏⠀⠉⠙⠲⣄⠀⢰⢠⠃⢀⡤⠞⠋⠉⠈⢹⠤⢼⣿⠏⠀
+⠀⠀⠘⣿⡅⠓⢒⡤⠤⠀⡈⠱⣄⣼⡴⠋⡀⠀⠤⢤⡒⠓⢬⣿⠃⠀⠀
+⠀⠀⠀⠹⣿⣯⣐⢷⣀⣀⢤⡥⢾⣿⠷⢥⠤⣀⣀⣞⣢⣽⡿⠃⠀⠀⠀
+⠀⠀⠀⠀⠈⢙⣿⠝⠀⢁⠔⡨⡺⡿⡕⢔⠀⡈⠐⠹⣟⠋⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⢼⣟⢦⢶⢅⠜⢰⠃⠀⢹⡌⢢⣸⠦⠴⣿⡇⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠘⣿⣇⡬⡌⢀⡟⠀⠀⠀⢷⠀⣧⢧⣵⣿⠂⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠈⢻⠛⠋⠉⠀⠀⠀⠀⠈⠉⠙⢻⡏⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⢰⡿⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣿⠄⠀⠀⠀⠀⠀⠀"""
 
 _console: Console | None = None
 
@@ -87,9 +87,9 @@ class TUI:
 
         self._prompt_style = Style.from_dict(
             {
-                "border": "#0054e3",
-                "arrow": "#0054e3 bold",
-                "hint": "#969696",
+                "border": "#585e68",
+                "arrow": "#e0e2e8 bold",
+                "hint": "#787c84",
             }
         )
         self._prompt_session: PromptSession = PromptSession(
@@ -157,13 +157,41 @@ class TUI:
 
         return text
 
+    def _gradient_logo(self) -> Text:
+        """Render the braille logo with a radial white→silver gradient.
+
+        Brightest (near white) at the center, fading to silver at the edges
+        all around, so the butterfly appears lit from the middle.
+        """
+        white = (255, 255, 255)
+        silver = (168, 174, 186)
+
+        rows = RELAY_LOGO.split("\n")
+        height = len(rows)
+        width = max((len(r) for r in rows), default=1)
+        cx = (width - 1) / 2
+        cy = (height - 1) / 2
+        max_dist = math.hypot(cx, cy) or 1.0
+
+        text = Text(justify="center")
+        for y, row in enumerate(rows):
+            for x, ch in enumerate(row):
+                t = min(math.hypot(x - cx, y - cy) / max_dist, 1.0)
+                r = round(white[0] + (silver[0] - white[0]) * t)
+                g = round(white[1] + (silver[1] - white[1]) * t)
+                b = round(white[2] + (silver[2] - white[2]) * t)
+                text.append(ch, style=f"rgb({r},{g},{b})")
+            if y != height - 1:
+                text.append("\n")
+        return text
+
     def welcome(self, model: str | None = None) -> None:
-        lines = [Text(RELAY_LOGO, style="info", justify="center"), Text("")]
-        lines.append(Text.assemble(("relay", "bold info"), (f" — v{RELAY_VERSION}", "muted"), justify="center"))
-        lines.append(Text(f"cwd: {self.cwd}", style="muted", justify="center"))
+        lines = [self._gradient_logo(), Text("")]
+        lines.append(Text.assemble(("relay", "bold highlight"), (f" — v{RELAY_VERSION}", "muted"), justify="center"))
+        lines.append(Text(f"cwd: {self.cwd}", style="subtitle", justify="center"))
         if model:
-            lines.append(Text(f"model: {model}", style="muted", justify="center"))
-        lines.append(Text("commands: /help /config /approval /model /exit", style="muted", justify="center"))
+            lines.append(Text(f"model: {model}", style="subtitle", justify="center"))
+        lines.append(Text("commands: /help /config /approval /model /exit", style="subtitle", justify="center"))
 
         panel = Panel(
             Group(*lines),
@@ -268,7 +296,7 @@ class TUI:
         table.add_column(style='code', overflow="fold")
 
         for key, value in self._ordered_args(tool_name, args):
-            table.add_row(key, value)
+            table.add_row(key, str(value))
         
         return table
 
