@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/github-logo/logo.png" alt="Relay" width="100%" />
+</p>
+
 # Relay
 
 An open-sourced AI coding agent, a terminal-based assistant that can read your code, call tools, and (eventually) help you build.
