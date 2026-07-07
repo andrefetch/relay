@@ -3,19 +3,22 @@ import asyncio
 from openai import AsyncOpenAI, RateLimitError, APIConnectionError, APIError
 from typing import Any, AsyncGenerator
 from client.response import TextDelta, TokenUsage, StreamEvent, StreamEventType, ToolCallDelta, ToolCall, parse_tool_call_arguments
+from config.config import Config
 
 
 class LLMClient:
-    def __init__(self) -> None:
+    def __init__(self, config: Config) -> None:
         self._client: AsyncOpenAI | None = None
         self._max_retries: int = 3
+        self.config = config
 
     def get_client(self) -> AsyncOpenAI:
         if self._client is None:
             # TODO: wire up to your own config system instead of hardcoding
+            # DONE !
             self._client = AsyncOpenAI(
-                api_key="",
-                base_url="https://openrouter.ai/api/v1",
+                api_key=self.config.api_key,
+                base_url=self.config.base_url # "https://openrouter.ai/api/v1",
             )
         return self._client
 

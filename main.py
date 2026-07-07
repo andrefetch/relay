@@ -2,6 +2,7 @@ from typing import Any
 from pathlib import Path
 from agent.agent import Agent
 from agent.events import AgentEventType
+from config.config import Config
 from config.loader import load_config
 from ui.renderer import TUI, get_console
 import asyncio
@@ -11,17 +12,18 @@ import sys
 console = get_console()
 
 class CLI:
-    def __init__(self):
-        self.agent : Agent | None = None
+    def __init__(self, config: Config):
+        self.agent: Agent | None = None
+        self.config = config
         self.tui = TUI()
 
     async def run_single(self, message: str) -> str | None:
-        async with Agent() as agent:
+        async with Agent(self.config) as agent:
             self.agent = agent
             return await self._process_message(message)
     
     async def run_interactive(self) -> str | None:
-        async with Agent() as agent:
+        async with Agent(self.config) as agent:
             self.agent = agent
             self.tui.welcome(
                 'tencent/hy3:free'
@@ -29,7 +31,7 @@ class CLI:
 
             while True:
                 try:
-                    user_input = console.input(self.tui.input_prompt()).strip()
+                    user_input = (await self.tui.prompt()).strip()
                     if not user_input:
                         continue
                     await self._process_message(user_input)
@@ -136,7 +138,7 @@ def main(
 
         sys.exit(1)
 
-    cli = CLI()
+    cli = CLI(config)
 
     if prompt:
         result = asyncio.run(cli.run_single(prompt))

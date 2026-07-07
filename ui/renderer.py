@@ -8,6 +8,11 @@ from rich.live import Live
 from rich import box
 from rich.syntax import Syntax
 
+from prompt_toolkit import PromptSession
+from prompt_toolkit.formatted_text import HTML
+from prompt_toolkit.styles import Style
+from prompt_toolkit.history import InMemoryHistory
+
 from utils.paths import display_path_relative_to_cwd
 from typing import Any, Tuple
 from pathlib import Path
@@ -80,6 +85,18 @@ class TUI:
         self._thinking_frame = 0
         self._thinking_label = ""
 
+        self._prompt_style = Style.from_dict(
+            {
+                "border": "#0054e3",
+                "arrow": "#0054e3 bold",
+                "hint": "#969696",
+            }
+        )
+        self._prompt_session: PromptSession = PromptSession(
+            history=InMemoryHistory(),
+            style=self._prompt_style,
+        )
+
     def _thinking_renderable(self) -> Text:
         frame = SPINNER_FRAMES[self._thinking_frame % len(SPINNER_FRAMES)]
         return Text.assemble((f"{frame} ", "muted"), (self._thinking_label, "muted"))
@@ -116,8 +133,29 @@ class TUI:
             self._thinking_live.stop()
             self._thinking_live = None
 
-    def input_prompt(self) -> str:
-        return "\n[user]>[/user] "
+    async def prompt(self) -> str:
+        """Read one line of user input inside a bordered box.
+
+        prompt_toolkit owns the input line, so the left/right borders stay
+        intact as the text grows — unlike readline, which can't keep a right
+        edge and made the old box look cut off. Uses the async variant since
+        we're already inside the asyncio event loop.
+        """
+        width = max(self.console.width, 24)
+        inner = width - 2
+
+        self.console.print()
+        self.console.print(f"[border]╭{'─' * inner}╮[/border]")
+
+        message = HTML("<border>│</border> <arrow>❯</arrow> ")
+        rprompt = HTML("<border>│</border>")
+
+        try:
+            text = await self._prompt_session.prompt_async(message, rprompt=rprompt)
+        finally:
+            self.console.print(f"[border]╰{'─' * inner}╯[/border]")
+
+        return text
 
     def welcome(self, model: str | None = None) -> None:
         lines = [Text(RELAY_LOGO, style="info", justify="center"), Text("")]
