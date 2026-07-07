@@ -32,81 +32,88 @@ class Agent:
     
     async def _agentic_loop(self) -> AsyncGenerator[AgentEvent, None]:
 
-        response_text = ""
+        max_turns = self.config.max_turns
 
-        tool_schemas = self.tool_registery.get_schemas()
-        tool_calls: list[ToolCall] = []
-        
-        async for event in self.client.chat_completion(
-            self.context_manager.get_messages(), 
-            tools=tool_schemas if tool_schemas else None, 
-            stream=True
-        ):
-            if event.type == StreamEventType.TEXT_DELTA:
-                if event.text_delta:
-                    content = event.text_delta.content
-                    response_text += content
-                yield AgentEvent.text_delta(content)
-            elif event.type == StreamEventType.TOOL_CALL_COMPLETE:
-                if event.tool_call:
-                    tool_calls.append(event.tool_call)
-            elif event.type == StreamEventType.ERROR:
-                yield AgentEvent.agent_error(event.error or "Unknown error occured.")
-        
-        self.context_manager.add_assistant_message(
-            response_text or None,
-            [
-                {
-                    'id': tc.call_id,
-                    'type': 'function',
-                    'function': {
-                        'name': tc.name,
-                        'arguments': json.dumps(tc.arguments),
-                    },
-                }
-                for tc in tool_calls
-            ]
-            if tool_calls
-            else None
-        )
-    
-        if response_text:
-            yield AgentEvent.text_complete(response_text)
-        
-        tool_call_results: list[ToolResultMessage] = []
+        for i in range(max_turns):
 
-        for tool_call in tool_calls:
-            yield AgentEvent.tool_call_start(
-                tool_call.call_id,
-                tool_call.name,
-                tool_call.arguments
+            response_text = ""
+
+            tool_schemas = self.tool_registery.get_schemas()
+            tool_calls: list[ToolCall] = []
+            
+            async for event in self.client.chat_completion(
+                self.context_manager.get_messages(), 
+                tools=tool_schemas if tool_schemas else None, 
+                stream=True
+            ):
+                if event.type == StreamEventType.TEXT_DELTA:
+                    if event.text_delta:
+                        content = event.text_delta.content
+                        response_text += content
+                    yield AgentEvent.text_delta(content)
+                elif event.type == StreamEventType.TOOL_CALL_COMPLETE:
+                    if event.tool_call:
+                        tool_calls.append(event.tool_call)
+                elif event.type == StreamEventType.ERROR:
+                    yield AgentEvent.agent_error(event.error or "Unknown error occured.")
+            
+            self.context_manager.add_assistant_message(
+                response_text or None,
+                [
+                    {
+                        'id': tc.call_id,
+                        'type': 'function',
+                        'function': {
+                            'name': tc.name,
+                            'arguments': json.dumps(tc.arguments),
+                        },
+                    }
+                    for tc in tool_calls
+                ]
+                if tool_calls
+                else None
             )
+        
+            if response_text:
+                yield AgentEvent.text_complete(response_text)
+            
+            if not tool_calls:
+                return
+            
+            tool_call_results: list[ToolResultMessage] = []
 
-            result = await self.tool_registery.invoke(
-                tool_call.name,
-                tool_call.arguments,
-                self.config.cwd,
-            )
-
-            yield AgentEvent.tool_call_complete(
-                tool_call.call_id,
-                tool_call.name,
-                result,
-            )
-
-            tool_call_results.append(
-                ToolResultMessage(
-                    tool_call_id=tool_call.call_id,
-                    content=result.to_model_output(),
-                    is_error=not result.success
+            for tool_call in tool_calls:
+                yield AgentEvent.tool_call_start(
+                    tool_call.call_id,
+                    tool_call.name,
+                    tool_call.arguments
                 )
-            )
 
-        for tool_result in tool_call_results:
-            self.context_manager.add_tool_result(
-                tool_result.tool_call_id,
-                tool_result.content,
-            )
+                result = await self.tool_registery.invoke(
+                    tool_call.name,
+                    tool_call.arguments,
+                    self.config.cwd,
+                )
+
+                yield AgentEvent.tool_call_complete(
+                    tool_call.call_id,
+                    tool_call.name,
+                    result,
+                )
+
+                tool_call_results.append(
+                    ToolResultMessage(
+                        tool_call_id=tool_call.call_id,
+                        content=result.to_model_output(),
+                        is_error=not result.success
+                    )
+                )
+
+            for tool_result in tool_call_results:
+                self.context_manager.add_tool_result(
+                    tool_result.tool_call_id,
+                    tool_result.content,
+                )
     
     async def __aenter__(self) -> Agent:
         return self
