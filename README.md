@@ -98,4 +98,4 @@ utils/             # errors, paths, text/token helpers
 
 ## License
 
-Open source (license TBD).
+GNU GENERAL PUBLIC LICENSE
