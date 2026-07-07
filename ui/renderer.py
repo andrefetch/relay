@@ -86,6 +86,7 @@ class TUI:
         self._thinking_task: asyncio.Task | None = None
         self._thinking_frame = 0
         self._thinking_label = ""
+        self._max_block_tokens = 240
 
         self._prompt_style = Style.from_dict(
             {
@@ -218,7 +219,8 @@ class TUI:
     
     def _ordered_args(self, tool_name: str, args: dict[str, Any]) -> list[Tuple]:
         _ORDER = {
-            'read_File': ['path', 'offset', 'limit']
+            'read_file': ['path', 'offset', 'limit'],
+            'write_file': ['path', 'create_directories', 'content']
         }
 
         preferred = _ORDER.get(tool_name, [])
@@ -298,6 +300,15 @@ class TUI:
         table.add_column(style='code', overflow="fold")
 
         for key, value in self._ordered_args(tool_name, args):
+            if isinstance(value, str):
+                if key in {
+                    'content', 
+                    'old_string',
+                    'new_string'
+                    }:
+                    line_count = len(value.splitlines()) or 0
+                    byte_count = len(value.encode('utf-8', errors='replace'))
+                    value = f"{line_count} lines ┈ {byte_count} bytes"
             table.add_row(key, str(value))
         
         return table
@@ -348,9 +359,10 @@ class TUI:
             error: str | None,
             metadata: dict[str, Any] | None,
             truncated: bool,
+            diff: str | None
             ) -> None:
         border_style = f"tool.{tool_kind}" if tool_kind else "tool"
-        status_icon = '✓' if success else '✗'
+        status_icon = '✓' if success else '✖'
         status_style = 'success' if success else 'error'
 
         title = Text.assemble(
@@ -393,13 +405,32 @@ class TUI:
                     word_wrap=False,
                 ))
             else:
-                output_display = truncate_text(output, "", 240, )
+                output_display = truncate_text(output, "", self._max_block_tokens, )
                 blocks.append(Syntax(
                     output_display,
                     'text',
                     theme='nord',
                     word_wrap=False
                 ))
+
+        elif name == "write_file" and success:
+            output_line = output.strip() if output.strip() else 'Completed'
+            blocks.append(Text(output_line, style='muted'))
+            if diff:
+                diff_display = truncate_text(
+                    diff,
+                    self.config.model_name,
+                    self._max_block_tokens,
+                )
+
+                blocks.append(
+                    Syntax(
+                        diff_display,
+                        'diff',
+                        theme='nord',
+                        word_wrap=True
+                    )
+                )
             
         if truncated:
             blocks.append(Text('Tool output was truncated', style='warning'))

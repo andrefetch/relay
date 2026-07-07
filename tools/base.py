@@ -29,12 +29,12 @@ class FileDiff:
         import difflib
 
         old_lines = self.old_content.splitlines(keepends=True)
-        new_lines = self.old_content.splitlines(keepends=True)
+        new_lines = self.new_content.splitlines(keepends=True)
 
         if old_lines and not old_lines[-1].endswith('\n'):
             old_lines[-1] += '\n'
         if new_lines and not new_lines[-1].endswith('\n'):
-            old_lines[-1] += '\n'
+            new_lines[-1] += '\n'
         
         old_name = '/dev/null' if self.is_new_file else str(self.path)
         new_name = '/dev/null' if self.is_deletion else str(self.path)

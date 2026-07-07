@@ -26,7 +26,10 @@ class AgentEvent:
     data: dict[str, Any] = field(default_factory=dict)
 
     @classmethod
-    def agent_start(cls, message: str) -> AgentEvent:
+    def agent_start(
+        cls, 
+        message: str
+    ) -> AgentEvent:
         return cls(
             type=AgentEventType.AGENT_START,
             data={
@@ -35,7 +38,11 @@ class AgentEvent:
         )
 
     @classmethod
-    def agent_end(cls, response: str | None = None, usage: TokenUsage | None = None) -> AgentEvent:
+    def agent_end(
+        cls, 
+        response: str | None = None, 
+        usage: TokenUsage | None = None
+    ) -> AgentEvent:
         return cls(
             type=AgentEventType.AGENT_END,
             data={
@@ -45,7 +52,11 @@ class AgentEvent:
         )
     
     @classmethod
-    def agent_error(cls, error: str, details: dict[str, Any] | None = None) -> AgentEvent:
+    def agent_error(
+        cls, 
+        error: str, 
+        details: dict[str, Any] | None = None
+    ) -> AgentEvent:
         return cls(
             type=AgentEventType.AGENT_ERROR,
             data={
@@ -55,7 +66,10 @@ class AgentEvent:
         )
 
     @classmethod
-    def text_delta(cls, content: str) -> AgentEvent:
+    def text_delta(
+        cls, 
+        content: str
+    ) -> AgentEvent:
         return cls(
             type=AgentEventType.TEXT_DELTA,
             data={
@@ -64,7 +78,10 @@ class AgentEvent:
         )
 
     @classmethod
-    def text_complete(cls, content: str) -> AgentEvent:
+    def text_complete(
+        cls, 
+        content: str
+    ) -> AgentEvent:
         return cls(
             type=AgentEventType.TEXT_COMPLETE,
             data={
@@ -94,6 +111,7 @@ class AgentEvent:
                 'output': result.output,
                 'error': result.error,
                 'metadata': result.metadata,
+                'diff': result.diff.create_diff() if result.diff else None,
                 'truncated': result.truncated,
             }
         )

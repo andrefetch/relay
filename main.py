@@ -102,6 +102,7 @@ class CLI:
                         event.data.get('error'),
                         event.data.get('metadata'),
                         event.data.get('truncated', False),
+                        event.data.get('diff'),
                     )
         finally:
             self.tui.stop_thinking()
