@@ -9,7 +9,7 @@ from client.response import StreamEventType, ToolCall, ToolResultMessage
 class Agent:
     def __init__(self, config: Config):
         self.config = config
-        self.session = Session()
+        self.session: Session | None = Session()
 
     async def run(self, message: str):
         yield AgentEvent.agent_start(message)
@@ -35,7 +35,7 @@ class Agent:
             tool_calls: list[ToolCall] = []
             
             async for event in self.client.chat_completion(
-                self.context_manager.get_messages(), 
+                self.session.context_manager.get_messages(), 
                 tools=tool_schemas if tool_schemas else None, 
                 stream=True
             ):
@@ -118,6 +118,6 @@ class Agent:
             exc_tb
             ) -> None:
 
-        if self.client:
-            await self.client.close()
-            self.client = None
+        if self.session and self.session.client:
+            await self.session.client.close()
+            self.session = None # Close session, everything else will be garbage collected
