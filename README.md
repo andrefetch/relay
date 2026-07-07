@@ -1,6 +1,6 @@
 # Relay
 
-An open-sourced AI coding agent — a terminal-based assistant that can read your code, call tools, and (eventually) help you build.
+An open-sourced AI coding agent, a terminal-based assistant that can read your code, call tools, and (eventually) help you build.
 
 > [!WARNING]
 > **Work in progress.** Right now you can talk to an LLM directly through an API call, but the agent harness and tool-calling abilities are still being built. This is not close to an MVP yet. The README will be updated as things progress.
@@ -29,8 +29,6 @@ python main.py                 # interactive mode
 python main.py "your prompt"   # single-shot mode
 python main.py --cwd /path     # run against a different working directory
 ```
-
-Inside the interactive session: `/help`, `/config`, `/approval`, `/model`, `/exit`.
 
 ## Configuration
 
