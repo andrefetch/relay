@@ -1,4 +1,5 @@
 from __future__ import annotations
+import json
 from pathlib import Path
 from typing import AsyncGenerator
 from context.manager import ContextManager
@@ -50,6 +51,19 @@ class Agent:
         
         self.context_manager.add_assistant_message(
             response_text or None,
+            [
+                {
+                    'id': tc.call_id,
+                    'type': 'function',
+                    'function': {
+                        'name': tc.name,
+                        'arguments': json.dumps(tc.arguments),
+                    },
+                }
+                for tc in tool_calls
+            ]
+            if tool_calls
+            else None
         )
     
         if response_text:

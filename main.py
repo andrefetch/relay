@@ -22,7 +22,7 @@ class CLI:
         async with Agent() as agent:
             self.agent = agent
             self.tui.welcome(
-                'poolside/laguna-xs-2.1:free'
+                'tencent/hy3:free'
             )
 
             while True:

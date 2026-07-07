@@ -53,7 +53,7 @@ class LLMClient:
         client = self.get_client()
 
         kwargs = {
-            "model": "poolside/laguna-xs-2.1:free",
+            "model": "tencent/hy3:free",
             "messages": messages,
             "stream": stream,
         }
