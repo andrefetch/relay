@@ -387,7 +387,7 @@ class TUI:
                 blocks.append(Syntax(
                     code,
                     programming_lang,
-                    theme='monokai',
+                    theme='nord',
                     line_numbers=True,
                     start_line=start_line,
                     word_wrap=False,
@@ -397,7 +397,7 @@ class TUI:
                 blocks.append(Syntax(
                     output_display,
                     'text',
-                    theme='monokai',
+                    theme='nord',
                     word_wrap=False
                 ))
             
