@@ -15,7 +15,7 @@ class CLI:
     def __init__(self, config: Config):
         self.agent: Agent | None = None
         self.config = config
-        self.tui = TUI()
+        self.tui = TUI(config)
 
     async def run_single(self, message: str) -> str | None:
         async with Agent(self.config) as agent:
