@@ -29,6 +29,8 @@ class Agent:
 
         for i in range(max_turns):
 
+            self.session.inc_turn()
+
             response_text = ""
 
             tool_schemas = self.session.tool_registery.get_schemas()
