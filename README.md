@@ -66,11 +66,13 @@ utils/             # errors, paths, text/token helpers
 
 ## Roadmap
 
-| Area   | Status       |
-| ------ | ------------ |
-| Config | ✅ Done       |
-| Tools  | 🚧 Unfinished |
-| UI     | 🚧 Unfinished |
+| Area   | Status         |
+| ------ | ------------   |
+| Config | ✅ Done        |
+| Tools  | 🚧 Unfinished  |
+| UI     | 🚧 Unfinished  |
+| MCP(s) | ❌ Not Started |
+
 
 ### Ideas / things to build
 
