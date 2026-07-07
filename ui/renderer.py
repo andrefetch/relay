@@ -19,6 +19,7 @@ from typing import Any, Tuple
 from pathlib import Path
 import asyncio
 import math
+import random
 import re
 
 from utils.text import truncate_text
@@ -75,6 +76,19 @@ def get_console() -> Console:
     
     return _console
 
+def random_thinking_text() -> str:
+
+    thinking_text = [
+        'Thinking…',
+        'Working…',
+        'Fluctuating…',
+        'Writing…',
+        'Typing…',
+        'Helping…',
+    ]
+
+    return random.choice(thinking_text)
+
 class TUI:
     def __init__(self, config: Config, console: Console | None = None) -> None:
         self.console = console or get_console()
@@ -99,7 +113,7 @@ class TUI:
             history=InMemoryHistory(),
             style=self._prompt_style,
         )
-
+    
     def _thinking_renderable(self) -> Text:
         frame = SPINNER_FRAMES[self._thinking_frame % len(SPINNER_FRAMES)]
         return Text.assemble((f"{frame} ", "muted"), (self._thinking_label, "muted"))
@@ -114,11 +128,11 @@ class TUI:
         except asyncio.CancelledError:
             pass
 
-    def start_thinking(self, label: str = "Thinking…") -> None:
+    def start_thinking(self, label: str | None = None) -> None:
         if self._thinking_live is not None:
             return
         self._thinking_frame = 0
-        self._thinking_label = label
+        self._thinking_label = label if label is not None else random_thinking_text()
         self._thinking_live = Live(
             self._thinking_renderable(),
             console=self.console,
