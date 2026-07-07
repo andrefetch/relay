@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/github-logo/logo.png" alt="Relay" width="100%" />
+  <img src="assets/logo.png" alt="Relay" width="100%" />
 </p>
 
 # Relay
