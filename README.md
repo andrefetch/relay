@@ -72,7 +72,12 @@ utils/             # errors, paths, text/token helpers
 | Tools  | 🚧 Unfinished  |
 | UI     | 🚧 Unfinished  |
 | MCP(s) | ❌ Not Started |
-
+| Subagents | ❌ Not Started |
+| Agent Swarms | ❌ Not Started |
+| Planning | ❌ Not Started |
+| Memory Management | ❌ Not Started |
+| Session Managment | ❌ Not Started |
+| Command Handling /slash commands | ❌ Not Started |
 
 ### Ideas / things to build
 
