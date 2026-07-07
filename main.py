@@ -1,6 +1,8 @@
 from typing import Any
+from pathlib import Path
 from agent.agent import Agent
 from agent.events import AgentEventType
+from config.loader import load_config
 from ui.renderer import TUI, get_console
 import asyncio
 import click
@@ -106,10 +108,36 @@ class CLI:
 
 @click.command()
 @click.argument("prompt", required=False)
+@click.option(
+    '--cwd',
+    '-c',
+    type=click.Path(
+        exists=True,
+        file_okay=False,
+        path_type=Path,
+    ),
+    help='Current Working Directory'
+)
 def main(
     prompt: str | None,
+    cwd: Path | None,
 ):
+    try:
+        config = load_config(cwd=cwd)
+    except Exception as e:
+        console.print(f"[error]Config Error: {e}[/error]")
+        sys.exit(1)
+
+    errors = config.validate()
+
+    if errors:
+        for error in errors:
+            console.print(f'[error]Config Error: {error}[/error]')
+
+        sys.exit(1)
+
     cli = CLI()
+
     if prompt:
         result = asyncio.run(cli.run_single(prompt))
         if result is None:

@@ -72,30 +72,30 @@ def load_config(cwd: Path | None) -> Config:
 
     if system_path.is_file():
         try:
-            _parse_toml(system_path)
+            config_dict = _merge_dicts(config_dict, _parse_toml(system_path))
         except ConfigError:
-            logger.warning(f"Skipping invalid system config: {system_path}") 
-    
+            logger.warning(f"Skipping invalid system config: {system_path}")
+
     project_path = _get_project_config(cwd)
     if project_path:
         try:
             project_config_dict = _parse_toml(project_path)
             config_dict = _merge_dicts(config_dict, project_config_dict)
-        except:
-            logger.warning(f"Skipping invalid system config: {system_path}") 
-        
-        if "cwd" not in config_dict:
-            config_dict["cwd"] = cwd
-        
-        if "developer_instructions" not in config_dict:
-            agent_md_content = _get_agent_md(cwd)
+        except ConfigError:
+            logger.warning(f"Skipping invalid project config: {project_path}")
 
-            if agent_md_content:
-                config_dict['developer_instructions'] = agent_md_content
-        
-        try:
-            config = Config(**config_dict)
-        except Exception as e:
-            raise ConfigError(f"Invalid config: {e}") from e
-        
-        return config
+    if "cwd" not in config_dict:
+        config_dict["cwd"] = cwd
+
+    if "developer_instructions" not in config_dict:
+        agent_md_content = _get_agent_md(cwd)
+
+        if agent_md_content:
+            config_dict['developer_instructions'] = agent_md_content
+
+    try:
+        config = Config(**config_dict)
+    except Exception as e:
+        raise ConfigError(f"Invalid config: {e}") from e
+
+    return config
