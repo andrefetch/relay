@@ -35,9 +35,13 @@ class Config(BaseModel):
     @model_name.setter
     def model_name(self, value: str) -> None:
         self.model.name = value
-    
-    @model_name.setter
-    def temperature(self, value: str) -> None:
+
+    @property
+    def temperature(self) -> float:
+        return self.model.temperature
+
+    @temperature.setter
+    def temperature(self, value: float) -> None:
         self.model.temperature = value
     
     def validate(self) -> list[str]:

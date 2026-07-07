@@ -26,7 +26,7 @@ class CLI:
         async with Agent(self.config) as agent:
             self.agent = agent
             self.tui.welcome(
-                'tencent/hy3:free'
+                self.config.model_name,
             )
 
             while True:

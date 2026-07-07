@@ -56,7 +56,7 @@ class LLMClient:
         client = self.get_client()
 
         kwargs = {
-            "model": "tencent/hy3:free",
+            "model": self.config.model_name,
             "messages": messages,
             "stream": stream,
         }

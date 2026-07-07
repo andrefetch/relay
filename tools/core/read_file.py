@@ -92,7 +92,7 @@ class ReadFileTool(Tool):
                 formatted_lines.append(f"{i + 1:6}|{line}")
 
             output = "\n".join(formatted_lines)
-            token_count = count_tokens(output, "tencent/hy3:free")
+            token_count = count_tokens(output)
 
             truncated = False
             if token_count > self.MAX_OUTPUT_TOKENS:
