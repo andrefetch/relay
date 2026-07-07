@@ -12,6 +12,7 @@ jiter==0.16.0
 markdown-it-py==4.2.0
 mdurl==0.1.2
 openai==2.44.0
+platformdirs==4.10.0
 pydantic==2.13.4
 pydantic-core==2.46.4
 pygments==2.20.0

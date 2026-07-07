@@ -48,3 +48,5 @@ class Config(BaseModel):
         
         if not self.cwd.exists():
             errors.append(f"Error: Working directory does not exist: {self.cwd}")
+        
+        return errors
