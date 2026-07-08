@@ -82,6 +82,7 @@ utils/             # errors, paths, text/token helpers
 | Memory Management | ❌ Not Started |
 | Session Managment | ❌ Not Started |
 | Command Handling /slash commands | ❌ Not Started |
+| Git Integration | ❌ Not Started | 
 
 ### Ideas / things to build
 
