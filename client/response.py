@@ -51,6 +51,7 @@ class ToolCall:
 class StreamEvent:
     type: StreamEventType
     text_delta: TextDelta | None = None
+    tool_calls: list[ToolCall] = field(default_factory=list)
     error: str | None = None
     finish_reason: str | None = None
     tool_call_delta: ToolCallDelta | None = None

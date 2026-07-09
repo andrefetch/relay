@@ -66,16 +66,18 @@ class LLMClient:
             kwargs['tool_choice'] = 'auto'
 
         for attempt in range(self._max_retries + 1):
+            emitted = False
             try:
                 if stream:
                     async for event in self._stream_response(client, kwargs):
+                        emitted = True
                         yield event
                 else:
                     event = await self._non_stream_response(client, kwargs)
                     yield event
                 return
             except RateLimitError as e:
-                if attempt < self._max_retries:
+                if not emitted and attempt < self._max_retries:
                     wait_time = math.pow(2, attempt)
                     await asyncio.sleep(wait_time)
                 else:
@@ -85,7 +87,7 @@ class LLMClient:
                     )
                     return
             except APIConnectionError as e:
-                if attempt < self._max_retries:
+                if not emitted and attempt < self._max_retries:
                     wait_time = math.pow(2, attempt)
                     await asyncio.sleep(wait_time)
                 else:
@@ -115,7 +117,10 @@ class LLMClient:
                     prompt_tokens=chunk.usage.prompt_tokens,
                     completion_tokens=chunk.usage.completion_tokens,
                     total_tokens=chunk.usage.total_tokens,
-                    cached_tokens=chunk.usage.prompt_tokens_details.cached_tokens,
+                    cached_tokens=(
+                        getattr(chunk.usage.prompt_tokens_details, "cached_tokens", 0)
+                        if chunk.usage.prompt_tokens_details else 0
+                    ),
                 )
 
             if not chunk.choices:
@@ -211,12 +216,16 @@ class LLMClient:
                 prompt_tokens=response.usage.prompt_tokens,
                 completion_tokens=response.usage.completion_tokens,
                 total_tokens=response.usage.total_tokens,
-                cached_tokens=response.usage.prompt_tokens_details.cached_tokens,
+                cached_tokens=(
+                    getattr(response.usage.prompt_tokens_details, "cached_tokens", 0)
+                    if response.usage.prompt_tokens_details else 0
+                ),
             )
 
         return StreamEvent(
             type=StreamEventType.MESSAGE_COMPLETE,
             text_delta=text_delta,
+            tool_calls=tool_calls,
             finish_reason=choice.finish_reason,
             usage=usage,
         )

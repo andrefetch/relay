@@ -18,6 +18,7 @@ class ReadFileParams(BaseModel):
 
     limit: int | None = Field(
         None,
+        ge=1,
         description='Maximum number of lines to read starting from offset. If omitted, reads to the end of the file.'
     )
 

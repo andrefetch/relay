@@ -17,7 +17,7 @@ from rich.text import Text
 from textual import on, work
 from textual.app import App, ComposeResult
 from textual.binding import Binding
-from textual.containers import Horizontal, Vertical, VerticalScroll
+from textual.containers import Center, Horizontal, Vertical, VerticalScroll
 from textual.message import Message
 from textual.widget import Widget
 from textual.widgets import Input, Static
@@ -541,6 +541,13 @@ class RelayApp(App):
         self._tools: dict[str, ToolCall] = {}
         self._busy = False
 
+    async def _confirm_tool(self, tool_name: str, arguments: dict[str, Any]) -> bool:
+        self.notify(
+            f"{tool_name} was denied: approval is required before modifying files.",
+            severity="warning",
+        )
+        return False
+
     def compose(self) -> ComposeResult:
         with Vertical(id="column"):
             yield VerticalScroll(Splash(), id="transcript")
@@ -559,7 +566,9 @@ class RelayApp(App):
         return self.query_one(PromptRule)
 
     async def on_mount(self) -> None:
-        self.agent = await self._stack.enter_async_context(Agent(self.config))
+        self.agent = await self._stack.enter_async_context(
+            Agent(self.config, confirmation_handler=self._confirm_tool)
+        )
         self.query_one("#prompt", Input).focus()
 
     async def on_unmount(self) -> None:

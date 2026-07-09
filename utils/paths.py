@@ -2,10 +2,14 @@ from pathlib import Path
 
 
 def resolve_path(base: str | Path, path: str | Path) -> Path:
-    path = Path(path)
-    if path.is_absolute():
-        return path
-    return (Path(base).resolve() / path)
+    base_path = Path(base).resolve()
+    candidate = Path(path)
+    resolved = candidate.resolve() if candidate.is_absolute() else (base_path / candidate).resolve()
+    try:
+        resolved.relative_to(base_path)
+    except ValueError as exc:
+        raise ValueError(f"Path is outside the working directory: {path}") from exc
+    return resolved
 
 def display_path_relative_to_cwd(path: str, cwd: Path | None) -> str:
     try:

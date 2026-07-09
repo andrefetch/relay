@@ -1,14 +1,20 @@
 from __future__ import annotations
 import json
-from typing import AsyncGenerator
+from typing import AsyncGenerator, Awaitable, Callable
 from agent.session import Session
 from config.config import Config
 from agent.events import AgentEvent, AgentEventType
 from client.response import StreamEventType, ToolCall, ToolResultMessage
+from tools.base import ToolResult
 
 class Agent:
-    def __init__(self, config: Config):
+    def __init__(
+        self,
+        config: Config,
+        confirmation_handler: Callable[[str, dict], Awaitable[bool]] | None = None,
+    ):
         self.config = config
+        self.confirmation_handler = confirmation_handler
         self.session: Session | None = Session(self.config)
 
     async def run(self, message: str):
@@ -43,9 +49,10 @@ class Agent:
                 stream=True
             ):
                 if event.type == StreamEventType.TEXT_DELTA:
-                    if event.text_delta:
-                        content = event.text_delta.content
-                        response_text += content
+                    if not event.text_delta:
+                        continue
+                    content = event.text_delta.content
+                    response_text += content
                     yield AgentEvent.text_delta(content)
                 elif event.type == StreamEventType.TOOL_CALL_COMPLETE:
                     if event.tool_call:
@@ -53,8 +60,14 @@ class Agent:
                 elif event.type == StreamEventType.MESSAGE_COMPLETE:
                     if event.usage:
                         self.session.last_usage = event.usage
+                    if event.text_delta:
+                        response_text += event.text_delta.content
+                        yield AgentEvent.text_delta(event.text_delta.content)
+                    if event.tool_calls:
+                        tool_calls.extend(event.tool_calls)
                 elif event.type == StreamEventType.ERROR:
-                    yield AgentEvent.agent_error(event.error or "Unknown error occured.")
+                    yield AgentEvent.agent_error(event.error or "Unknown error occurred.")
+                    return
             
             self.session.context_manager.add_assistant_message(
                 response_text or None,
@@ -88,11 +101,28 @@ class Agent:
                     tool_call.arguments
                 )
 
-                result = await self.session.tool_registery.invoke(
-                    tool_call.name,
-                    tool_call.arguments,
-                    self.config.cwd,
-                )
+                tool = self.session.tool_registery.get(tool_call.name)
+                approved = True
+                if tool and tool.is_mutating(tool_call.arguments):
+                    if self.confirmation_handler is None:
+                        approved = False
+                    else:
+                        approved = await self.confirmation_handler(
+                            tool_call.name,
+                            tool_call.arguments,
+                        )
+
+                if approved:
+                    result = await self.session.tool_registery.invoke(
+                        tool_call.name,
+                        tool_call.arguments,
+                        self.config.cwd,
+                    )
+                else:
+                    result = ToolResult.error_result(
+                        f"Tool execution denied: {tool_call.name}",
+                        metadata={"tool_name": tool_call.name, "denied": True},
+                    )
 
                 yield AgentEvent.tool_call_complete(
                     tool_call.call_id,
