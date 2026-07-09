@@ -245,7 +245,8 @@ class TUI:
     def _ordered_args(self, tool_name: str, args: dict[str, Any]) -> list[Tuple]:
         _ORDER = {
             'read_file': ['path', 'offset', 'limit'],
-            'write_file': ['path', 'create_directories', 'content']
+            'write_file': ['path', 'create_directories', 'content'],
+            'edit': ['path', 'replace_all', 'old_string', 'new_string'],
         }
 
         preferred = _ORDER.get(tool_name, [])
@@ -330,7 +331,7 @@ class TUI:
                     'content', 
                     'old_string',
                     'new_string'
-                    }:
+                }:
                     line_count = len(value.splitlines()) or 0
                     byte_count = len(value.encode('utf-8', errors='replace'))
                     value = f"{line_count} lines ┈ {byte_count} bytes"
@@ -448,7 +449,7 @@ class TUI:
                     word_wrap=False
                 ))
 
-        elif name == "write_file" and success:
+        elif name == {"write_file", "edit"} and success and diff:
             output_line = output.strip() if output.strip() else 'Completed'
             blocks.append(Text(output_line, style='muted'))
             if diff:
