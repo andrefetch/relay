@@ -1,9 +1,9 @@
-from typing import Any
 from pathlib import Path
 from agent.agent import Agent
 from agent.events import AgentEventType
 from config.config import Config
 from config.loader import load_config
+from ui.app import RelayApp
 from ui.renderer import TUI, get_console
 import asyncio
 import click
@@ -12,6 +12,12 @@ import sys
 console = get_console()
 
 class CLI:
+    """One-shot (`relay "prompt"`) driver.
+
+    Stays line-oriented so the output can be piped and redirected; the
+    interactive front-end is the full-screen RelayApp.
+    """
+
     def __init__(self, config: Config):
         self.agent: Agent | None = None
         self.config = config
@@ -21,27 +27,7 @@ class CLI:
         async with Agent(self.config) as agent:
             self.agent = agent
             return await self._process_message(message)
-    
-    async def run_interactive(self) -> str | None:
-        async with Agent(self.config) as agent:
-            self.agent = agent
-            self.tui.welcome(
-                self.config.model_name,
-            )
 
-            while True:
-                try:
-                    user_input = (await self.tui.prompt()).strip()
-                    if not user_input:
-                        continue
-                    await self._process_message(user_input)
-                except KeyboardInterrupt:
-                    console.print("\n[dim]Use /exit to quit[/dim]")
-                except EOFError:
-                    break
-            
-            console.print("\n[dim]Exiting.[/dim]")
-    
     def _get_tool_kind(self, tool_name: str) -> str | None:
         tool = self.agent.session.tool_registery.get(tool_name)
         if not tool:
@@ -141,14 +127,12 @@ def main(
 
         sys.exit(1)
 
-    cli = CLI(config)
-
     if prompt:
-        result = asyncio.run(cli.run_single(prompt))
+        result = asyncio.run(CLI(config).run_single(prompt))
         if result is None:
             sys.exit(1)
     else:
-        asyncio.run(cli.run_interactive())
+        RelayApp(config).run()
 
 if __name__ == "__main__": # better than just main() ngl
     main()
