@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field
 from utils.paths import ensure_parent_dir, resolve_path
 
 class EditParams(BaseModel):
-    path = str = Field(
+    path: str = Field(
         ...,
         description='Path to the file to edit (relative to working directory) or an absolute path.'
     )
@@ -18,7 +18,7 @@ class EditParams(BaseModel):
         ...,
         description='The text to replace old_string with. Can be empty to delete.'
     )
-    replace_all: str = Field(
+    replace_all: bool = Field(
         False,
         description='Replace all occurrences of old_string default is false'
     )
@@ -53,7 +53,7 @@ class EditTool(Tool):
 
             line_count = len(params.new_string.splitlines())
 
-            return ToolResult.success(
+            return ToolResult.success_result(
                 f'Created: {path} {line_count} lines',
                 diff=FileDiff(
                     path=path,

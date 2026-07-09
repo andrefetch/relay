@@ -2,11 +2,9 @@ import tiktoken
 
 def get_tokenizer(model: str):
     try:
-        encoding = tiktoken.encoding_for_model(model)
-        return encoding.encode
+        return tiktoken.encoding_for_model(model)
     except Exception:
-        encoding = tiktoken.get_encoding("cl100k_base")
-        return encoding
+        return tiktoken.get_encoding("cl100k_base")
 
 def count_tokens(text: str, model: str = "") -> int:
     tokenizer = get_tokenizer(model)

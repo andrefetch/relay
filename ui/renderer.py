@@ -265,7 +265,9 @@ class TUI:
 
     def _extract_read_file_code(self, text: str) -> tuple[int, str] | None:
         body = text
-        header_match = re.match(r"^showing lines (\d+)-(\d+) of (\d+)\n\n", text)
+        header_match = re.match(
+            r"^Showing lines (\d+)-(\d+) of (\d+)[^\n]*\n\n", text, re.IGNORECASE
+        )
 
         if header_match:
             body = text[header_match.end() :]
@@ -409,11 +411,19 @@ class TUI:
         )
 
         primary_path = None
-        blocks = []
+        blocks: list[Any] = []
         if isinstance(metadata, dict) and isinstance(metadata.get('path'), str):
             primary_path = metadata.get('path')
 
-        if name == "read_file" and success:
+        if not success:
+            blocks.append(Text(error or 'Tool failed', style='error'))
+            if output.strip():
+                blocks.append(Text(
+                    truncate_text(output, "", self._max_block_tokens),
+                    style='muted',
+                ))
+
+        elif name == "read_file" and success:
             if primary_path:
                 result = self._extract_read_file_code(output)
                 if result is None:
@@ -449,7 +459,7 @@ class TUI:
                     word_wrap=False
                 ))
 
-        elif name == {"write_file", "edit"} and success and diff:
+        elif name in {"write_file", "edit"} and success:
             output_line = output.strip() if output.strip() else 'Completed'
             blocks.append(Text(output_line, style='muted'))
             if diff:
@@ -467,7 +477,16 @@ class TUI:
                         word_wrap=True
                     )
                 )
-            
+
+        elif output.strip():
+            blocks.append(Text(
+                truncate_text(output, "", self._max_block_tokens),
+                style='code',
+            ))
+
+        if not blocks:
+            blocks.append(Text('(no output)', style='muted'))
+
         if truncated:
             blocks.append(Text('Tool output was truncated', style='warning'))
 
