@@ -21,6 +21,7 @@ import asyncio
 import math
 import random
 import re
+import time
 
 from utils.text import truncate_text
 
@@ -94,6 +95,7 @@ class TUI:
         self.console = console or get_console()
         self._assistant_stream_open = False
         self.tool_args_by_call_id: dict[str, dict[str, Any]] = {}
+        self.tool_started_at: dict[str, float] = {}
         self.config = config
         self.cwd = self.config.cwd
         self._thinking_live: Live | None = None
@@ -114,6 +116,15 @@ class TUI:
             style=self._prompt_style,
         )
     
+    @staticmethod
+    def _format_elapsed(seconds: float) -> str:
+        if seconds < 1:
+            return f"{seconds * 1000:.0f}ms"
+        if seconds < 60:
+            return f"{seconds:.1f}s"
+        minutes, secs = divmod(int(seconds), 60)
+        return f"{minutes}m{secs:02d}s"
+
     def _thinking_renderable(self) -> Text:
         frame = SPINNER_FRAMES[self._thinking_frame % len(SPINNER_FRAMES)]
         return Text.assemble((f"{frame} ", "muted"), (self._thinking_label, "muted"))
@@ -335,6 +346,7 @@ class TUI:
             arguments: dict[str, Any],
             ) -> None:
         self.tool_args_by_call_id[call_id] = arguments
+        self.tool_started_at[call_id] = time.monotonic()
         border_style = f"tool.{tool_kind}" if tool_kind else "tool"
 
         title = Text.assemble(
@@ -378,6 +390,15 @@ class TUI:
         border_style = f"tool.{tool_kind}" if tool_kind else "tool"
         status_icon = '✓' if success else '✖'
         status_style = 'success' if success else 'error'
+
+        started_at = self.tool_started_at.pop(call_id, None)
+        elapsed = self._format_elapsed(time.monotonic() - started_at) if started_at is not None else None
+
+        status_word = 'done' if success else 'failed'
+        subtitle = Text.assemble((status_word, status_style))
+        if elapsed:
+            subtitle.append(" · ", style="muted")
+            subtitle.append(elapsed, style="muted")
 
         title = Text.assemble(
             (f"{status_icon} ", f"{status_style}"),
@@ -455,7 +476,7 @@ class TUI:
             ),
             title=title,
             title_align="left",
-            subtitle=Text('done' if success else 'failed', style=status_style),
+            subtitle=subtitle,
             subtitle_align='right',
             border_style=border_style,
             box=box.ROUNDED,
@@ -463,3 +484,31 @@ class TUI:
         )
         self.console.print()
         self.console.print(panel)
+
+    def render_usage(self, usage: dict[str, Any] | None) -> None:
+        """Print a dim one-line context/usage gauge after a turn completes."""
+        if not usage:
+            return
+
+        prompt_tokens = usage.get('prompt_tokens', 0) or 0
+        completion_tokens = usage.get('completion_tokens', 0) or 0
+        cached_tokens = usage.get('cached_tokens', 0) or 0
+        context_window = self.config.model.context_window
+
+        line = Text()
+        line.append("context ", style="muted")
+        line.append(f"{prompt_tokens:,}", style="subtitle")
+        line.append(f" / {context_window:,}", style="muted")
+
+        if context_window:
+            pct = prompt_tokens / context_window * 100
+            line.append(f"  ({pct:.1f}%)", style="info")
+
+        line.append("   ·   ", style="muted")
+        line.append(f"{completion_tokens:,} out", style="muted")
+        if cached_tokens:
+            line.append("   ·   ", style="muted")
+            line.append(f"{cached_tokens:,} cached", style="muted")
+
+        self.console.print()
+        self.console.print(line)

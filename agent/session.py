@@ -1,6 +1,7 @@
 import uuid
 
 from client.llm_client import LLMClient
+from client.response import TokenUsage
 from config.config import Config
 from context.manager import ContextManager
 from tools.registry import create_default_registery
@@ -17,6 +18,11 @@ class Session:
         self.session_id = str(uuid.uuid4()) # Unique identifiers to resume sessions
         self.created_at = datetime.now()
         self.updated_at = datetime.now()
+
+        # Usage from the most recent completion. prompt_tokens on the latest
+        # call reflects the full context currently in the window, so this
+        # doubles as the "context used" gauge.
+        self.last_usage: TokenUsage | None = None
 
         self._turn_count = 0
     

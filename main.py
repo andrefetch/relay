@@ -78,6 +78,8 @@ class CLI:
                     if assistant_streaming:
                         self.tui.end_assistant()
                         assistant_streaming = False
+                elif event.type == AgentEventType.AGENT_END:
+                    self.tui.render_usage(event.data.get('usage'))
                 elif event.type == AgentEventType.AGENT_ERROR:
                     console.print(f"[error]{event.data.get('error')}[/error]")
                     return None
@@ -145,8 +147,6 @@ def main(
         result = asyncio.run(cli.run_single(prompt))
         if result is None:
             sys.exit(1)
-        else:
-            asyncio.run(cli.run_interactive())
     else:
         asyncio.run(cli.run_interactive())
 

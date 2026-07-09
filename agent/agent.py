@@ -15,13 +15,14 @@ class Agent:
         yield AgentEvent.agent_start(message)
         self.session.context_manager.add_user_message(message)
 
+        final_response: str | None = None
         async for event in self._agentic_loop():
             yield event
 
             if event.type == AgentEventType.TEXT_COMPLETE:
                 final_response = event.data.get("content")
-        
-        yield AgentEvent.agent_end()
+
+        yield AgentEvent.agent_end(final_response, self.session.last_usage)
     
     async def _agentic_loop(self) -> AsyncGenerator[AgentEvent, None]:
 
@@ -49,6 +50,9 @@ class Agent:
                 elif event.type == StreamEventType.TOOL_CALL_COMPLETE:
                     if event.tool_call:
                         tool_calls.append(event.tool_call)
+                elif event.type == StreamEventType.MESSAGE_COMPLETE:
+                    if event.usage:
+                        self.session.last_usage = event.usage
                 elif event.type == StreamEventType.ERROR:
                     yield AgentEvent.agent_error(event.error or "Unknown error occured.")
             
