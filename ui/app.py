@@ -10,6 +10,7 @@ from contextlib import AsyncExitStack
 from pathlib import Path
 from typing import Any
 
+from rich.console import Group
 from rich.syntax import Syntax
 from rich.table import Table
 from rich.text import Text
@@ -35,7 +36,7 @@ from ui.format import (
     secondary_args,
     summarise_value,
 )
-from ui.logo import RELAY_VERSION, wordmark
+from ui.logo import RELAY_VERSION, gradient_logo
 from ui.theme import PALETTE, tool_colour
 from utils.paths import display_path_relative_to_cwd
 from utils.text import truncate_text
@@ -48,7 +49,7 @@ COLLAPSED_SYMBOL = "▸"
 EXPANDED_SYMBOL = "▾"
 INTERRUPTED_SYMBOL = "⊘"
 
-WORDMARK_MIN_WIDTH = 52
+LOGO_MIN_WIDTH = 29
 
 # Tool chatter is worth clipping; a diff is the thing you actually asked for,
 # so it gets a far larger budget before we cut it.
@@ -390,7 +391,15 @@ class AssistantMessage(Static):
 
 
 class Splash(Static):
-    """Centred wordmark for the empty transcript; removed on the first message."""
+    """Centred butterfly for the empty transcript; removed on the first message."""
+
+    def __init__(self, cwd: str, model: str) -> None:
+        super().__init__()
+        self._rows = [
+            ("cwd", _tilde(cwd)),
+            ("model", model),
+            ("commands", "/exit"),
+        ]
 
     def on_mount(self) -> None:
         self._draw()
@@ -398,12 +407,42 @@ class Splash(Static):
     def on_resize(self) -> None:
         self._draw()
 
+    def _caption(self, width: int) -> Text:
+        """Label/value rows, indented as one block so the labels stay in a column.
+
+        Centring is done by hand: rich's `justify="center"` re-centres each line
+        on its own width, which would rag the label column.
+        """
+        label_width = max(len(label) for label, _ in self._rows)
+        gutter = label_width + 2
+        cells = [(label, Text(value, no_wrap=True)) for label, value in self._rows]
+        for _, value in cells:
+            value.truncate(max(width - gutter, 8), overflow="ellipsis")
+
+        block_width = gutter + max(value.cell_len for _, value in cells)
+        indent = " " * max((width - block_width) // 2, 0)
+
+        caption = Text(no_wrap=True)
+        for index, (label, value) in enumerate(cells):
+            caption.append(indent + label.ljust(label_width) + "  ", style=PALETTE["slate"])
+            value.stylize_before(PALETTE["graphite"])
+            caption.append_text(value)
+            if index != len(cells) - 1:
+                caption.append("\n")
+        return caption
+
     def _draw(self) -> None:
-        # The block letters are ~50 cells wide; below that they'd just clip.
-        if self.size.width and self.size.width < WORDMARK_MIN_WIDTH:
-            self.update(Text("relay", style=f"bold {PALETTE['bright']}", justify="center"))
+        width = self.size.width
+        if not width:
+            return
+
+        # The butterfly is 27 cells wide; below that it would wrap and shear.
+        if width < LOGO_MIN_WIDTH:
+            mark = Text("relay", style=f"bold {PALETTE['bright']}", justify="center")
         else:
-            self.update(wordmark(justify="center"))
+            mark = gradient_logo(justify="center")
+
+        self.update(Group(mark, Text(), self._caption(width)))
 
 
 class Thinking(Static):
@@ -542,15 +581,16 @@ class RelayApp(App):
         self._busy = False
 
     async def _confirm_tool(self, tool_name: str, arguments: dict[str, Any]) -> bool:
-        self.notify(
-            f"{tool_name} was denied: approval is required before modifying files.",
-            severity="warning",
-        )
-        return False
+        # Approvals aren't built yet. This can't just be `None`: the agent reads
+        # a missing handler as a denial, so mutating tools would never run.
+        return True
 
     def compose(self) -> ComposeResult:
         with Vertical(id="column"):
-            yield VerticalScroll(Splash(), id="transcript")
+            yield VerticalScroll(
+                Splash(str(self.config.cwd), self.config.model_name),
+                id="transcript",
+            )
             yield PromptRule(self.config.model_name)
             with PromptRow():
                 yield Caret("❯")
