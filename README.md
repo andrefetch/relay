@@ -7,7 +7,7 @@
 An open-sourced AI coding agent, a terminal-based assistant that can read your code, call tools, and (eventually) help you build.
 
 > [!WARNING]
-> **Work in progress.** The agent loop, tool calling, and the terminal UI now work end to end, but Relay can't yet safely change your files: the interactive TUI **denies every mutating tool** because the approval flow isn't built. Treat it as read-only for now. This is not an MVP yet, and the README will be updated as things progress.
+> **Work in progress.** The agent loop, tool calling, and the terminal UI now work end to end. There is **no approval flow yet**: while it's being built, the interactive TUI **auto-approves every tool**, including mutating ones (`write_file`, `edit`, `shell`). That means Relay can change your files and run commands without asking — use it in a directory you don't mind it touching. This is not an MVP yet, and the README will be updated as things progress.
 
 <p align="center">
   <img src="assets/ui.png" alt="Relay running a read_file tool call in the terminal" width="100%" />
@@ -18,18 +18,18 @@ An open-sourced AI coding agent, a terminal-based assistant that can read your c
 - **Interactive TUI** — a full-screen [Textual](https://textual.textualize.io/) app: streaming responses, collapsible tool calls that re-render in place, syntax-highlighted file reads and diffs, and a graphite-ink theme. Press `ctrl+t` to fold or unfold every tool call at once.
 - **One-shot mode** — `python main.py "your prompt"` prints line-oriented output to normal scrollback, so it pipes and redirects cleanly.
 - **Direct LLM chat** — streaming chat completions through an OpenAI-compatible endpoint (currently OpenRouter).
-- **Tool calling** — the agent loop requests tools and feeds the results back into the conversation. Three core tools are wired up: `read_file`, `write_file`, and `edit`.
+- **Tool calling** — the agent loop requests tools and feeds the results back into the conversation. Four core tools are wired up: `read_file`, `write_file`, `edit`, and `shell`.
 - **Context usage** — the rule above the input box shows the model and how much of the context window the last turn used.
 - **Config system** — layered TOML config (system + per-project), with environment variables for secrets.
 
-### Tool approval, and why writes are blocked
+### Tool approval
 
 Tools are tagged with a `ToolKind`. Anything that isn't a plain read (`write`, `shell`, `network`, `memory`) counts as mutating, and the agent routes it through a confirmation handler before it runs:
 
 - **One-shot mode** asks on stdin (`Allow this tool? [y/N]`).
-- **The interactive TUI has no approval UI yet**, so its handler refuses unconditionally — `write_file` and `edit` will always come back as `Tool execution denied`.
+- **The interactive TUI has no approval UI yet.** As a stopgap, its handler is hardcoded to approve everything (`return True`) so mutating tools actually run while the real flow is being built. The handler can't just be `None` — the agent reads a missing handler as a denial, so nothing mutating would ever execute.
 
-Building a real approval flow in the TUI is the next thing that matters.
+A real approval flow in the TUI (an inline prompt, and an `/approval` command) is being built next, at which point this stopgap goes away.
 
 ## Getting started
 
@@ -94,7 +94,7 @@ utils/             # errors, paths, text/token helpers
 | Config | ✅ Done        |
 | UI     | ✅ Done        |
 | Tools  | 🚧 Unfinished  |
-| Tool approval | 🚧 One-shot only |
+| Tool approval | 🚧 One-shot only; TUI auto-approves |
 | MCP(s) | ❌ Not Started |
 | Subagents | ❌ Not Started |
 | Agent Swarms | ❌ Not Started |
