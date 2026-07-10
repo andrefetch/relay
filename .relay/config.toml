@@ -10,6 +10,6 @@ max_tool_output_tokens = 50000
 debug = false
 
 [model]
-name = "openai/gpt-5.6-luna"
+name = "cohere/north-mini-code:free"
 temperature = 1.0
 context_window = 256000

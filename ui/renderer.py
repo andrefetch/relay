@@ -1,10 +1,3 @@
-"""Line-oriented renderer for one-shot (`relay "prompt"`) runs.
-
-Appends to normal terminal scrollback so the output can be piped, redirected
-and scrolled with the terminal's own buffer. The interactive front-end is the
-full-screen Textual app in ui/app.py.
-"""
-
 from rich.console import Console, ConsoleOptions, Group, RenderResult
 from rich.text import Text
 from rich.segment import Segment

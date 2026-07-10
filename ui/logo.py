@@ -19,97 +19,10 @@ RELAY_LOGO = """\
 _WHITE = (255, 255, 255)
 _SILVER = (168, 174, 186)
 
-# 8-row pixel font. Rows 0-1 are the ascender band (only `l` reaches up),
-# rows 2-6 the x-height, row 7 the descender (only `y` reaches down).
-_GLYPHS: dict[str, list[str]] = {
-    "r": [
-        "....",
-        "....",
-        "#.##",
-        "##..",
-        "#...",
-        "#...",
-        "#...",
-        "....",
-    ],
-    "e": [
-        ".....",
-        ".....",
-        ".###.",
-        "#...#",
-        "#####",
-        "#....",
-        ".###.",
-        ".....",
-    ],
-    "l": [
-        "##.",
-        ".#.",
-        ".#.",
-        ".#.",
-        ".#.",
-        ".#.",
-        ".##",
-        "...",
-    ],
-    "a": [
-        ".....",
-        ".....",
-        ".###.",
-        "....#",
-        ".####",
-        "#...#",
-        ".####",
-        ".....",
-    ],
-    "y": [
-        ".....",
-        ".....",
-        "#...#",
-        "#...#",
-        ".####",
-        "....#",
-        "....#",
-        "####.",
-    ],
-}
-
 # One pixel is two cells wide, or the letters come out squashed: terminal
 # cells are about twice as tall as they are wide.
 _PIXEL = "██"
 _LETTER_GAP = 1
-
-_WORDMARK_DIM = (88, 94, 104)
-_WORDMARK_BRIGHT = (224, 226, 232)
-
-
-def wordmark(word: str = "relay", justify: str = "center") -> Text:
-    """`word` in block letters, lit by a left-to-right slate→silver ramp."""
-    glyphs = [_GLYPHS[char] for char in word if char in _GLYPHS]
-    if not glyphs:
-        return Text()
-
-    height = len(next(iter(_GLYPHS.values())))
-    rows: list[str] = []
-    for y in range(height):
-        rows.append((" " * _LETTER_GAP).join(glyph[y] for glyph in glyphs))
-
-    width = max(len(row) for row in rows)
-    text = Text(justify=justify, no_wrap=True)
-    for y, row in enumerate(rows):
-        for x, cell in enumerate(row):
-            if cell != "#":
-                text.append("  ")
-                continue
-            t = x / max(width - 1, 1)
-            r = round(_WORDMARK_DIM[0] + (_WORDMARK_BRIGHT[0] - _WORDMARK_DIM[0]) * t)
-            g = round(_WORDMARK_DIM[1] + (_WORDMARK_BRIGHT[1] - _WORDMARK_DIM[1]) * t)
-            b = round(_WORDMARK_DIM[2] + (_WORDMARK_BRIGHT[2] - _WORDMARK_DIM[2]) * t)
-            text.append(_PIXEL, style=f"rgb({r},{g},{b})")
-        if y != height - 1:
-            text.append("\n")
-    return text
-
 
 def small_wordmark(justify: str = "center") -> Text:
     """A quiet, letter-spaced `relay` to sit under the butterfly."""
