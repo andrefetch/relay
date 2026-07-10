@@ -5,6 +5,7 @@ re-render in place — impossible in the append-only renderer in ui/renderer.py.
 """
 
 from __future__ import annotations
+import random
 
 from contextlib import AsyncExitStack
 from pathlib import Path
@@ -572,6 +573,15 @@ class RelayApp(App):
         Binding("ctrl+t", "toggle_all", "Toggle tool details"),
     ]
 
+    RANDOM_WELCOME = [
+        'Ask relay…',
+        'Relay, describe this codebase…',
+        'Ask relay about refactoring…',
+        'Relay, is this thing on…',
+        'Ask relay about /help…',
+        'Contribute to relay: github.com/andrefetch/relay…',
+    ]
+
     def __init__(self, config: Config) -> None:
         super().__init__()
         self.config = config
@@ -594,7 +604,7 @@ class RelayApp(App):
             yield PromptRule(self.config.model_name)
             with PromptRow():
                 yield Caret("❯")
-                yield Input(placeholder="Message relay…", id="prompt")
+                yield Input(placeholder=random.choice(self.RANDOM_WELCOME), id="prompt")
         yield Footer(str(self.config.cwd))
 
     @property
