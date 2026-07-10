@@ -61,6 +61,11 @@ class LLMClient:
             "stream": stream,
         }
 
+        # Without this the stream carries no usage chunk at all, and the
+        # context gauge on the prompt rule has nothing to show.
+        if stream:
+            kwargs["stream_options"] = {"include_usage": True}
+
         if tools:
             kwargs['tools'] = self._build_tools(tools)
             kwargs['tool_choice'] = 'auto'

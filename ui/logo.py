@@ -3,7 +3,7 @@
 from rich.text import Text
 import math
 
-RELAY_VERSION = "0.1"
+RELAY_VERSION = "0.2"
 
 RELAY_LOGO = """\
 ⣠⣤⣤⡤⠤⢤⣤⣀⡀⠀⠐⠒⡄⠀⡠⠒⠀⠀⢀⣀⣤⠤⠤⣤⣤⣤⡄
@@ -109,6 +109,12 @@ def wordmark(word: str = "relay", justify: str = "center") -> Text:
         if y != height - 1:
             text.append("\n")
     return text
+
+
+def small_wordmark(justify: str = "center") -> Text:
+    """A quiet, letter-spaced `relay` to sit under the butterfly."""
+    r, g, b = _SILVER
+    return Text(" ".join("relay"), style=f"rgb({r},{g},{b})", justify=justify, no_wrap=True)
 
 
 def gradient_logo(justify: str = "center") -> Text:

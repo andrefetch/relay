@@ -12,6 +12,9 @@ class AgentEventType(str, Enum):
     AGENT_END="agent_end"
     AGENT_ERROR="agent_error"
 
+    # Token accounting, emitted once per completion
+    USAGE = "usage"
+
     # Text streaming
     TEXT_DELTA = "text_delta"
     TEXT_COMPLETE = "text_complete"
@@ -51,6 +54,18 @@ class AgentEvent:
             },
         )
     
+    @classmethod
+    def usage(
+        cls,
+        turn_usage: TokenUsage
+    ) -> AgentEvent:
+        return cls(
+            type=AgentEventType.USAGE,
+            data={
+                'usage': turn_usage.__dict__,
+            }
+        )
+
     @classmethod
     def agent_error(
         cls, 

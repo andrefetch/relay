@@ -19,6 +19,7 @@ class Agent:
 
     async def run(self, message: str):
         yield AgentEvent.agent_start(message)
+        self.session.reset_turn_usage()
         self.session.context_manager.add_user_message(message)
 
         final_response: str | None = None
@@ -60,6 +61,8 @@ class Agent:
                 elif event.type == StreamEventType.MESSAGE_COMPLETE:
                     if event.usage:
                         self.session.last_usage = event.usage
+                        self.session.turn_usage += event.usage
+                        yield AgentEvent.usage(self.session.turn_usage)
                     if event.text_delta:
                         response_text += event.text_delta.content
                         yield AgentEvent.text_delta(event.text_delta.content)

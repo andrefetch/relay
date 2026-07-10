@@ -6,6 +6,7 @@ re-render in place — impossible in the append-only renderer in ui/renderer.py.
 
 from __future__ import annotations
 import random
+import time
 
 from contextlib import AsyncExitStack
 from pathlib import Path
@@ -37,7 +38,7 @@ from ui.format import (
     secondary_args,
     summarise_value,
 )
-from ui.logo import RELAY_VERSION, gradient_logo
+from ui.logo import RELAY_VERSION, gradient_logo, small_wordmark
 from ui.theme import PALETTE, tool_colour
 from utils.paths import display_path_relative_to_cwd
 from utils.text import truncate_text
@@ -441,26 +442,57 @@ class Splash(Static):
         if width < LOGO_MIN_WIDTH:
             mark = Text("relay", style=f"bold {PALETTE['bright']}", justify="center")
         else:
-            mark = gradient_logo(justify="center")
+            mark = Group(gradient_logo(justify="center"), Text(), small_wordmark(justify="center"))
 
         self.update(Group(mark, Text(), self._caption(width)))
 
 
+def _compact_tokens(count: int) -> str:
+    if count < 1000:
+        return str(count)
+    if count < 1_000_000:
+        return f"{count / 1000:.1f}k"
+    return f"{count / 1_000_000:.1f}M"
+
+
+def _elapsed(seconds: float) -> str:
+    if seconds < 60:
+        return f"{seconds:.1f}s"
+    minutes, secs = divmod(int(seconds), 60)
+    return f"{minutes}m{secs:02d}s"
+
+
 class Thinking(Static):
-    """Transient spinner shown between submit and first output."""
+    """Status line pinned below the transcript for the length of a turn.
+
+    Carries the spinner, a live elapsed clock, and the tokens burned so far.
+    """
 
     def __init__(self) -> None:
         super().__init__()
         self._frame = 0
         self._timer = None
+        self._started_at = time.monotonic()
+        self._tokens = 0
 
     def on_mount(self) -> None:
         self._timer = self.set_interval(SPINNER_INTERVAL, self._tick)
+        self._tick()
+
+    def set_tokens(self, completion_tokens: int) -> None:
+        self._tokens = completion_tokens
+        self._tick()
 
     def _tick(self) -> None:
         self._frame += 1
         frame = SPINNER_FRAMES[self._frame % len(SPINNER_FRAMES)]
-        self.update(Text(f"{frame} Thinking…", style=PALETTE["graphite"]))
+
+        line = Text(f"{frame} Thinking… ", style=PALETTE["graphite"])
+        line.append(_elapsed(time.monotonic() - self._started_at), style=PALETTE["graphite"])
+        if self._tokens:
+            line.append(" · ", style=PALETTE["slate"])
+            line.append(f"{_compact_tokens(self._tokens)} tokens", style=PALETTE["graphite"])
+        self.update(line)
 
     def on_unmount(self) -> None:
         if self._timer is not None:
@@ -588,6 +620,7 @@ class RelayApp(App):
         self._stack = AsyncExitStack()
         self.agent: Agent | None = None
         self._tools: dict[str, ToolCall] = {}
+        self._thinking: Thinking | None = None
         self._busy = False
 
     async def _confirm_tool(self, tool_name: str, arguments: dict[str, Any]) -> bool:
@@ -625,7 +658,12 @@ class RelayApp(App):
         await self._stack.aclose()
 
     async def _append(self, widget: Widget) -> None:
-        await self.transcript.mount(widget)
+        # The thinking line stays pinned at the foot of the transcript for the
+        # whole turn, so new content has to slot in above it.
+        if self._thinking is not None and self._thinking.is_mounted:
+            await self.transcript.mount(widget, before=self._thinking)
+        else:
+            await self.transcript.mount(widget)
         self.transcript.scroll_end(animate=False)
 
     @on(ToolHeader.Toggle)
@@ -676,14 +714,16 @@ class RelayApp(App):
 
         thinking = Thinking()
         await self._append(thinking)
+        self._thinking = thinking
         assistant: AssistantMessage | None = None
 
         try:
             async for event in self.agent.run(message):
-                if thinking.is_mounted and event.type != AgentEventType.AGENT_START:
-                    await thinking.remove()
+                if event.type == AgentEventType.USAGE:
+                    usage = event.data.get("usage") or {}
+                    thinking.set_tokens(usage.get("completion_tokens", 0) or 0)
 
-                if event.type == AgentEventType.TEXT_DELTA:
+                elif event.type == AgentEventType.TEXT_DELTA:
                     if assistant is None:
                         assistant = AssistantMessage()
                         await self._append(assistant)
@@ -710,6 +750,7 @@ class RelayApp(App):
         except Exception as exc:  # surface rather than kill the app
             await self._append(Static(Text(f"{type(exc).__name__}: {exc}", style=f"bold {PALETTE['red']}")))
         finally:
+            self._thinking = None
             if thinking.is_mounted:
                 await thinking.remove()
             # Any call still open never got a completion event: stop its

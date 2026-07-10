@@ -24,7 +24,14 @@ class Session:
         # doubles as the "context used" gauge.
         self.last_usage: TokenUsage | None = None
 
+        # Usage summed across every completion in the current turn. The agent
+        # loops once per tool round-trip, so this grows as the turn works.
+        self.turn_usage = TokenUsage()
+
         self._turn_count = 0
+
+    def reset_turn_usage(self) -> None:
+        self.turn_usage = TokenUsage()
     
     def inc_turn(self) -> int:
         self._turn_count += 1
