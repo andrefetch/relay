@@ -238,6 +238,7 @@ class TUI:
         metadata: dict[str, Any] | None,
         truncated: bool,
         diff: str | None,
+        exit_code: int | None,
     ) -> None:
         self._stop_spinner()
 
@@ -248,6 +249,8 @@ class TUI:
             format_elapsed(time.monotonic() - started_at) if started_at is not None else None
         )
         display_args = self.tool_args_by_call_id.pop(call_id, {})
+
+        args = self.tool_args_by_call_id(call_id, {})
 
         status = Text()
         if not success:
@@ -312,6 +315,30 @@ class TUI:
                         word_wrap=True,
                     )
                 )
+        
+        elif name == 'shell':
+            command = args.get('command')
+            if isinstance(command, str) and command.strip():
+                blocks.append(Text(f'$ {command.strip()}', style='muted'))
+            
+            if exit_code is not None:
+                blocks.append(Text(
+                    f'exit_code={exit_code}', style='muted'
+                ))
+            
+            output_display = truncate_text(
+                output, 
+                self.config.model_name,
+                MAX_BLOCK_TOKENS,
+            )
+            blocks.append(
+                Syntax(
+                    output_display,
+                    "text",
+                    theme="nord",
+                    word_wrap=True,
+                    )
+            )
 
         elif output.strip():
             blocks.append(

@@ -1,8 +1,3 @@
-"""Presentation helpers shared by the full-screen app and the one-shot renderer.
-
-Kept free of rich/textual imports so both front-ends can format identically.
-"""
-
 from pathlib import Path
 from typing import Any, Tuple
 import re
@@ -18,6 +13,7 @@ ARG_ORDER = {
     "read_file": ["path", "offset", "limit"],
     "write_file": ["path", "create_directories", "content"],
     "edit": ["path", "replace_all", "old_string", "new_string"],
+    "shell": ['command', 'timeout', 'cwd']
 }
 
 _EXTENSION_LANGUAGES = {

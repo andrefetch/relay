@@ -14,7 +14,7 @@ class Session:
             config=config,
         )
         self.context_manager = ContextManager(config=config)
-        self.tool_registery = create_default_registery()
+        self.tool_registery = create_default_registery(config)
         self.session_id = str(uuid.uuid4()) # Unique identifiers to resume sessions
         self.created_at = datetime.now()
         self.updated_at = datetime.now()

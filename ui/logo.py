@@ -1,5 +1,3 @@
-"""The relay wordmark and butterfly, as a rich renderable."""
-
 from rich.text import Text
 import math
 

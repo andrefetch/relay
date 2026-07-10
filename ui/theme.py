@@ -1,5 +1,3 @@
-"""One palette, consumed as a rich Theme and as Textual CSS variables."""
-
 from rich.theme import Theme
 
 # Raw palette. Textual CSS can't read a rich Theme, so both are built from here.

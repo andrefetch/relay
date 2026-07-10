@@ -1,9 +1,3 @@
-"""Full-screen interactive front-end.
-
-Owns the viewport, which is what lets tool calls collapse to a single row and
-re-render in place — impossible in the append-only renderer in ui/renderer.py.
-"""
-
 from __future__ import annotations
 import random
 import time
