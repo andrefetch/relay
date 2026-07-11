@@ -18,6 +18,7 @@ An open-sourced AI coding agent, a terminal-based assistant that can read your c
 - **Interactive TUI** — a full-screen [Textual](https://textual.textualize.io/) app: streaming responses, collapsible tool calls that re-render in place, syntax-highlighted file reads and diffs, and a graphite-ink theme. Press `ctrl+t` to fold or unfold every tool call at once.
 - **One-shot mode** — `python main.py "your prompt"` prints line-oriented output to normal scrollback, so it pipes and redirects cleanly.
 - **Direct LLM chat** — streaming chat completions through an OpenAI-compatible endpoint (currently OpenRouter).
+- **Browser login** — `relay login` authorizes with OpenRouter over an OAuth PKCE flow (no client secret), mints a user-scoped API key, and saves it locally so you never have to paste a raw key. `relay login --paste` and `relay logout` are also there.
 - **Tool calling** — the agent loop requests tools and feeds the results back into the conversation. Four core tools are wired up: `read_file`, `write_file`, `edit`, and `shell`.
 - **Context usage** — the rule above the input box shows the model and how much of the context window the last turn used.
 - **Config system** — layered TOML config (system + per-project), with environment variables for secrets.
@@ -39,9 +40,8 @@ python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 
-# 2. Set your credentials (never commit these)
-export API_KEY="your-api-key"
-export BASE_URL="https://openrouter.ai/api/v1"   # optional; defaults may apply
+# 2. Log in (opens your browser to authorize with OpenRouter)
+python main.py login
 
 # 3. Run it
 python main.py                 # interactive mode
@@ -50,6 +50,28 @@ python main.py --cwd /path     # run against a different working directory
 ```
 
 Inside the TUI: `ctrl+t` toggles tool detail, `enter` on a focused tool row expands just that one, and `/exit`, `/quit`, or `ctrl+c` leave.
+
+## Authentication
+
+Relay needs an OpenRouter API key. There are two ways to provide one, in order of precedence:
+
+1. **`API_KEY` environment variable** — always wins when set, which is handy for CI or one-off overrides:
+   ```bash
+   export API_KEY="your-api-key"
+   export BASE_URL="https://openrouter.ai/api/v1"   # optional; defaults to OpenRouter
+   ```
+2. **`relay login`** — the everyday path. It runs an [OAuth PKCE](https://openrouter.ai/docs/use-cases/oauth-pkce) flow:
+
+   ```bash
+   python main.py login              # authorize in the browser
+   python main.py login --paste      # paste an API key manually instead
+   python main.py login --base-url … # save a non-default API base URL
+   python main.py logout             # remove the saved key
+   ```
+
+   `login` opens your browser to `openrouter.ai/auth`, waits on a one-shot `localhost` callback for the authorization code, then exchanges it (plus the PKCE verifier) for a fresh user-scoped key. No client secret is involved. If no browser can be launched, it prints the URL for you to open manually.
+
+The key is written to `credentials.toml` in your user config dir (locked to `0600`), **not** to `config.toml` — secrets don't belong in a file you might commit or share. `relay logout` deletes it.
 
 ## Configuration
 
@@ -69,7 +91,7 @@ temperature = 1.0
 context_window = 256000
 ```
 
-`api_key` and `base_url` are **not** stored in TOML — they come from the `API_KEY` and `BASE_URL` environment variables.
+`api_key` and `base_url` are **not** stored in `config.toml` — they come from the `API_KEY` / `BASE_URL` environment variables or from the separate `credentials.toml` written by `relay login`. See [Authentication](#authentication).
 
 An `AGENTS.md` in your working directory is picked up automatically as developer instructions.
 
@@ -80,7 +102,7 @@ main.py            # CLI entrypoint (Click) + one-shot driver
 agent/             # agentic loop and event types
 client/            # LLM client + streaming/response models
 context/           # conversation/context management
-config/            # config schema + layered loader
+config/            # config schema, layered loader, credentials + OAuth login
 tools/             # tool base class, registry, and core tools
 prompts/           # system prompt
 ui/                # Textual app (app.py), one-shot renderer, theme, logo

@@ -2,6 +2,8 @@ import os
 from pathlib import Path
 from pydantic import BaseModel, Field
 
+from config.credentials import load_credentials
+
 class ModelConfig(BaseModel):
 
     name: str = "tencent/hy3:free"
@@ -38,11 +40,13 @@ class Config(BaseModel):
 
     @property
     def api_key(self) -> str | None:
-        return os.environ.get("API_KEY")
-    
+        # Env var wins (handy for CI / one-off overrides); otherwise fall
+        # back to whatever `relay login` saved.
+        return os.environ.get("API_KEY") or load_credentials().get("api_key")
+
     @property
     def base_url(self) -> str | None:
-        return os.environ.get("BASE_URL")
+        return os.environ.get("BASE_URL") or load_credentials().get("base_url")
     
     @property
     def model_name(self) -> str:
@@ -64,7 +68,7 @@ class Config(BaseModel):
         errors: list[str] = []
 
         if not self.api_key:
-            errors.append("No API key was found. Solution: Set API_KEY environment variable")
+            errors.append("No API key was found. Solution: run `relay login` (or set the API_KEY environment variable)")
         
         if not self.cwd.exists():
             errors.append(f"Working directory does not exist: {self.cwd}")
