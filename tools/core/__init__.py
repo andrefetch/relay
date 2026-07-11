@@ -5,6 +5,9 @@ from tools.core.edit_file import EditTool
 from tools.core.shell import ShellTool
 from tools.core.grep import GrepTool
 from tools.core.glob import GlobTool
+
+from tools.network.web_search import WebSearchTool
+
 from tools.base import Tool
 
 __all__ = [
@@ -15,6 +18,7 @@ __all__ = [
     'ListDirectoriesTool',
     'GrepTool',
     'GlobTool',
+    'WebSearchTool'
 ]
 
 def get_all_core_tools() -> list[Tool]:
@@ -26,4 +30,5 @@ def get_all_core_tools() -> list[Tool]:
         ListDirectoriesTool,
         GrepTool,
         GlobTool,
+        WebSearchTool,
     ]

@@ -353,7 +353,7 @@ class TUI:
                 summary.append(f"{entries} entrries")
             
             if summary:
-                blocks.append(Text('┈'.join(summary), style='muted'))
+                blocks.append(Text(' ┈ '.join(summary), style='muted'))
             
             output_display = truncate_text(
                 output, 
@@ -383,7 +383,7 @@ class TUI:
                 summary.append(f"searched {files_searched} files")
             
             if summary:
-                blocks.append(Text("┈".join(summary), style='muted'))
+                blocks.append(Text(" ┈ ".join(summary), style='muted'))
             
             output_display = truncate_text(output, self.config.model_name, MAX_BLOCK_TOKENS)
             blocks.append(
@@ -401,6 +401,34 @@ class TUI:
 
             if isinstance(matches, int):
                 blocks.append(Text(f"{matches} matches", style='muted'))
+            
+            output_display = truncate_text(output, self.config.model_name, MAX_BLOCK_TOKENS)
+            blocks.append(
+                Syntax(
+                    output_display,
+                    "text",
+                    theme="nord",
+                    word_wrap=True,
+                    )
+            )
+
+        elif name == 'web_search' and success:
+
+            results = metadata.get('results')
+            query = args.get('query')
+
+            summary = []
+
+            if isinstance(query, str):
+                summary.append(
+                    query
+                )
+            if isinstance(results, int):
+                summary.append(
+                    f'{results} results'
+                )
+            
+            blocks.append(Text(" ┈ ".join(summary), style='muted'))
             
             output_display = truncate_text(output, self.config.model_name, MAX_BLOCK_TOKENS)
             blocks.append(
