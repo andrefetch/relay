@@ -4,6 +4,7 @@ from tools.core.write_file import WriteFileTool
 from tools.core.edit_file import EditTool
 from tools.core.shell import ShellTool
 from tools.core.grep import GrepTool
+from tools.core.glob import GlobTool
 from tools.base import Tool
 
 __all__ = [
@@ -13,6 +14,7 @@ __all__ = [
     'ShellTool',
     'ListDirectoriesTool',
     'GrepTool',
+    'GlobTool',
 ]
 
 def get_all_core_tools() -> list[Tool]:
@@ -23,4 +25,5 @@ def get_all_core_tools() -> list[Tool]:
         ShellTool,
         ListDirectoriesTool,
         GrepTool,
+        GlobTool,
     ]
