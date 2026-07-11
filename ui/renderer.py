@@ -340,6 +340,34 @@ class TUI:
                     )
             )
 
+        elif name == 'list_dir':
+            entries = metadata.get(entries)
+            path = metadata.get(path)
+            summary = []
+            if isinstance(path, str):
+                summary.append(path)
+            
+            if isinstance(entries, int):
+                summary.append(f"{entries} entrries")
+            
+            if summary:
+                blocks.append(Text('┈'.join(summary), style='muted'))
+            
+            output_display = truncate_text(
+                output, 
+                self.config.model_name, 
+                MAX_BLOCK_TOKENS
+            )
+
+            blocks.append(
+                Syntax(
+                    output_display,
+                    "text",
+                    theme="nord",
+                    word_wrap=True,
+                    )
+            )
+
         elif output.strip():
             blocks.append(
                 Text(truncate_text(output, "", MAX_BLOCK_TOKENS), style="code")
