@@ -67,7 +67,7 @@ class GrepTool(Tool):
             lines = content.splitlines()
             file_matches = False
 
-            for i, line in enumerate(lines):
+            for i, line in enumerate(lines, start=1):
                 if pattern.search(line):
                     matches += 1
                     if not file_matches:
