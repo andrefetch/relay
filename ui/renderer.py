@@ -394,9 +394,24 @@ class TUI:
                     word_wrap=True,
                     )
             )
+        
+        elif name == 'glob' and success:
 
+            matches = metadata.get('matches')
 
-
+            if isinstance(matches, int):
+                blocks.append(Text(f"{matches} matches", style='muted'))
+            
+            output_display = truncate_text(output, self.config.model_name, MAX_BLOCK_TOKENS)
+            blocks.append(
+                Syntax(
+                    output_display,
+                    "text",
+                    theme="nord",
+                    word_wrap=True,
+                    )
+            )
+            
         elif output.strip():
             blocks.append(
                 Text(truncate_text(output, "", MAX_BLOCK_TOKENS), style="code")

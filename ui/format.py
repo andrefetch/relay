@@ -16,6 +16,7 @@ ARG_ORDER = {
     "shell": ['command', 'timeout', 'cwd'],
     "list_dir": ['path', 'inclide_hidden'],
     "grep": ['path', 'case_insensitive', 'pattern'],
+    "glob": ['path', 'pattern']
 }
 
 _EXTENSION_LANGUAGES = {
