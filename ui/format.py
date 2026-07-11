@@ -15,6 +15,7 @@ ARG_ORDER = {
     "edit": ["path", "replace_all", "old_string", "new_string"],
     "shell": ['command', 'timeout', 'cwd'],
     "list_dir": ['path', 'inclide_hidden'],
+    "grep": ['path', 'case_insensitive', 'pattern'],
 }
 
 _EXTENSION_LANGUAGES = {

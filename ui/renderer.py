@@ -304,7 +304,7 @@ class TUI:
                 )
             )
 
-        elif name in {"write_file", "edit"}:
+        elif name in {"write_file", "edit"} and success:
             blocks.append(Text(output.strip() or "Completed", style="muted"))
             if diff:
                 blocks.append(
@@ -316,7 +316,7 @@ class TUI:
                     )
                 )
         
-        elif name == 'shell':
+        elif name == 'shell' and success:
             command = args.get('command')
             if isinstance(command, str) and command.strip():
                 blocks.append(Text(f'$ {command.strip()}', style='muted'))
@@ -340,10 +340,12 @@ class TUI:
                     )
             )
 
-        elif name == 'list_dir':
+        elif name == 'list_dir' and success:
+
             entries = metadata.get(entries)
             path = metadata.get(path)
             summary = []
+
             if isinstance(path, str):
                 summary.append(path)
             
@@ -367,6 +369,33 @@ class TUI:
                     word_wrap=True,
                     )
             )
+        
+        elif name == 'grep' and success:
+
+            matches = metadata.get('matches')
+            files_searched = metadata.get('files_searched')
+
+            summary = []
+
+            if isinstance(matches, int):
+                summary.append(f"{matches} matches")
+            if isinstance(files_searched, int):
+                summary.append(f"searched {files_searched} files")
+            
+            if summary:
+                blocks.append(Text("┈".join(summary), style='muted'))
+            
+            output_display = truncate_text(output, self.config.model_name, MAX_BLOCK_TOKENS)
+            blocks.append(
+                Syntax(
+                    output_display,
+                    "text",
+                    theme="nord",
+                    word_wrap=True,
+                    )
+            )
+
+
 
         elif output.strip():
             blocks.append(
