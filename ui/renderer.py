@@ -30,7 +30,7 @@ GUTTER_CHAR = "│"
 
 # Tool chatter is worth clipping; a diff is the thing you actually asked for,
 # so it gets a far larger budget before we cut it.
-MAX_BLOCK_TOKENS = 240
+MAX_BLOCK_TOKENS = 2400
 MAX_DIFF_TOKENS = 4000
 
 THINKING_WORDS = [

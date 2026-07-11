@@ -9,7 +9,7 @@ from utils.paths import is_binary_file, resolve_path
 
 class GrepParams(BaseModel):
 
-    patten: str = Field(
+    pattern: str = Field(
         ...,
         description='Regular expression pattern to search for.'
     )
