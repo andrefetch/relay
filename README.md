@@ -39,4 +39,4 @@ python main.py --cwd /path     # run against a different working directory
 
 ## License
 
-(GNU GENERAL PUBLIC LICENSE)[LICENSE)
+[GNU GENERAL PUBLIC LICENSE](LICENSE)
