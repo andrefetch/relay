@@ -1,3 +1,4 @@
+from tools.core.directories import ListDirectoriesTool
 from tools.core.read_file import ReadFileTool
 from tools.core.write_file import WriteFileTool
 from tools.core.edit_file import EditTool
@@ -9,6 +10,7 @@ __all__ = [
     'WriteFileTool'
     'EditTool'
     'ShellTool'
+    'ListDirectoriesTool'
 ]
 
 def get_all_core_tools() -> list[Tool]:
@@ -17,4 +19,5 @@ def get_all_core_tools() -> list[Tool]:
         WriteFileTool,
         EditTool,
         ShellTool,
+        ListDirectoriesTool,
     ]

@@ -85,6 +85,10 @@ def summarise_value(key: str, value: Any) -> str:
         line_count = len(value.splitlines())
         byte_count = len(value.encode("utf-8", errors="replace"))
         return f"{line_count} lines ┈ {byte_count} bytes"
+    
+    if isinstance(value, bool):
+        value = str(value)
+        
     return str(value)
 
 
