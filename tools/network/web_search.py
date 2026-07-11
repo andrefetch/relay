@@ -6,23 +6,25 @@ from pydantic import BaseModel, Field
 
 from utils.paths import is_binary_file, resolve_path
 
-class GlobParams(BaseModel):
+class WebSearchParams(BaseModel):
 
-    pattern: str = Field(
+    qurey: str = Field(
         ...,
-        description='Glob pattern to match for.'
+        description='Search query'
     )
 
-    path: str = Field(
-        '.',
-        description='Directory path to search in (default: current directory)'
+    max_results: int = Field(
+        10,
+        ge=1,
+        le=50,
+        description='Maximum results to return (default: 10)'
     )
 
-class GlobTool(Tool):
-    name = 'glob'
-    description = 'Find files matching a glob pattern. Supports ** for recursive search and matching.'
-    kind = ToolKind.READ
-    schema = GlobParams
+class WebSearchTool(Tool):
+    name = 'web_search'
+    description = 'Search the web for information. Returns the search results that contains titles, URL(s) and snippets.'
+    kind = ToolKind.NETWORK
+    schema = WebSearchParams
 
     async def execute(self, invocation: ToolInvocation) -> ToolResult:
         params = GlobParams(**invocation.params)
