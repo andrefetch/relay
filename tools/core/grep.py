@@ -83,7 +83,7 @@ class GrepTool(Tool):
         if not output_lines:
 
             return ToolResult.success_result(
-                f'No matches found for pattern: {params.pattern}',
+                f'No matches found for pattern: "{params.pattern}"',
                 metadata = {
                 'path': str(search_path),
                 'matches': 0,
@@ -105,6 +105,16 @@ class GrepTool(Tool):
         files = []
         
         for root, dirs, filenames in os.walk(search_path):
+            dirs[:] = [
+                d for d in dirs if d not in 
+            {
+                'node_modules',
+                '__pycache__',
+                '.git',
+                '.venv',
+                'venv',
+            }
+        ]
             for filename in filenames:
                 if filename.startswith('.'):
                     continue
