@@ -344,6 +344,14 @@ class ToolCall(Vertical):
         if isinstance(results, int):
             summary.append(f"{results} results")
 
+        status_code = metadata.get("status_code")
+        if isinstance(status_code, int):
+            summary.append(f"HTTP {status_code}")
+
+        content_length = metadata.get("content_length")
+        if isinstance(content_length, int):
+            summary.append(f"{content_length} bytes")
+
         return summary
 
     def _build_blocks(
