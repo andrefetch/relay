@@ -7,6 +7,7 @@ from tools.core.grep import GrepTool
 from tools.core.glob import GlobTool
 
 from tools.network.web_search import WebSearchTool
+from tools.network.web_fetch import WebFetchTool
 
 from tools.base import Tool
 
@@ -18,7 +19,8 @@ __all__ = [
     'ListDirectoriesTool',
     'GrepTool',
     'GlobTool',
-    'WebSearchTool'
+    'WebSearchTool',
+    'WebFetchTool',
 ]
 
 def get_all_core_tools() -> list[Tool]:
@@ -31,4 +33,5 @@ def get_all_core_tools() -> list[Tool]:
         GrepTool,
         GlobTool,
         WebSearchTool,
+        WebFetchTool,
     ]

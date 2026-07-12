@@ -54,7 +54,17 @@ MAX_DIFF_TOKENS = 4000
 
 # Tools whose output is plain text worth showing verbatim under a count summary,
 # rather than syntax-highlighted source or a diff.
-TEXT_OUTPUT_TOOLS = frozenset({"shell", "list_dir", "grep", "glob", "web_search"})
+TEXT_OUTPUT_TOOLS = frozenset(
+    {
+        "shell", 
+        "list_dir", 
+        "grep", 
+        "glob",
+        "web_search",
+        "web_fetch",
+    }
+
+)
 
 
 def _two_column(left: Text, right: Text) -> Table:
