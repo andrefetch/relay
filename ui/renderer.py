@@ -462,7 +462,7 @@ class TUI:
                 )
             
             if summary:
-                blocks.append(Text(" ┈ ".join(summary), style='muted'))
+                blocks.append(Text(" ┈ ".join(str(summary)), style='muted'))
             
             output_display = truncate_text(output, self.config.model_name, MAX_BLOCK_TOKENS)
             blocks.append(
