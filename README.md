@@ -15,7 +15,7 @@ An open-sourced AI coding agent, a terminal-based assistant that can read your c
 - One-shot mode for command-line usage
 - Direct LLM chat via OpenRouter (OpenAI-compatible endpoint)
 - Browser login with OAuth PKCE (no client secret)
-- Tool calling with four core tools: `read`, `write_file`, `edit`, `shell`
+- Tool calling with five core tools: `read`, `write`, `edit`, `shell`, `list_dir`
 - Context usage tracking
 - Layered TOML config system (system + project)
 - Tool approval system (one-shot mode only; TUI auto-approves)
