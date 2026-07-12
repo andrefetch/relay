@@ -54,7 +54,7 @@ class WebSearchTool(Tool):
 
         for i, result in enumerate(results, start=1):
             output_lines.append(f"{i}. Title: {result['title']}")
-            output_lines.append(f"     URL: {result['title']}")
+            output_lines.append(f"     URL: {result['href']}")
             if result.get('body'):
                 output_lines.append(f"  Snippet: {result['body']}")
             
