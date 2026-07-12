@@ -52,6 +52,10 @@ LOGO_MIN_WIDTH = 29
 MAX_BLOCK_TOKENS = 240
 MAX_DIFF_TOKENS = 4000
 
+# Tools whose output is plain text worth showing verbatim under a count summary,
+# rather than syntax-highlighted source or a diff.
+TEXT_OUTPUT_TOOLS = frozenset({"shell", "list_dir", "grep", "glob", "web_search"})
+
 
 def _two_column(left: Text, right: Text) -> Table:
     """A grid that fills the width, so `right` truly sits on the right edge."""
@@ -168,11 +172,18 @@ class ToolCall(Vertical):
     completes, rather than printing a second block.
     """
 
-    def __init__(self, name: str, tool_kind: str | None, args: dict[str, Any]) -> None:
+    def __init__(
+        self,
+        name: str,
+        tool_kind: str | None,
+        args: dict[str, Any],
+        cwd: Path | None = None,
+    ) -> None:
         super().__init__()
         self.tool_name = name
         self.tool_kind = tool_kind
         self.args = args
+        self.cwd = cwd
         self.started_at = time.monotonic()
         self.collapsed = True
         self.done = False
@@ -261,6 +272,7 @@ class ToolCall(Vertical):
         truncated: bool,
         diff: str | None,
         model_name: str,
+        exit_code: int | None = None,
     ) -> None:
         self._stop_timer()
         self.done = True
@@ -279,7 +291,9 @@ class ToolCall(Vertical):
             self._status.append("✓ ", style=PALETTE["teal"])
         self._status.append(elapsed, style=PALETTE["graphite"])
 
-        blocks = self._build_blocks(success, output, error, metadata, truncated, diff, model_name)
+        blocks = self._build_blocks(
+            success, output, error, metadata, truncated, diff, model_name, exit_code
+        )
         self._has_body = bool(blocks)
         if blocks:
             await self._body.mount_all([Static(block) for block in blocks])
@@ -292,6 +306,36 @@ class ToolCall(Vertical):
 
         self._render_header()
 
+    def _result_summary(
+        self, metadata: dict[str, Any], head: tuple[str, str] | None
+    ) -> list[str]:
+        """Counts worth stating up front, so a collapsed row still tells you something."""
+        summary: list[str] = []
+
+        # The path is only worth repeating when it wasn't the headline — for a
+        # bare `list_dir` or `grep` the tool resolved it and the header shows nothing.
+        path = metadata.get("path")
+        if not head and isinstance(path, str):
+            summary.append(display_path_relative_to_cwd(path, self.cwd))
+
+        entries = metadata.get("entries")
+        if isinstance(entries, int):
+            summary.append(f"{entries} entries")
+
+        matches = metadata.get("matches")
+        if isinstance(matches, int):
+            summary.append(f"{matches} matches")
+
+        files_searched = metadata.get("files_searched")
+        if isinstance(files_searched, int):
+            summary.append(f"searched {files_searched} files")
+
+        results = metadata.get("results")
+        if isinstance(results, int):
+            summary.append(f"{results} results")
+
+        return summary
+
     def _build_blocks(
         self,
         success: bool,
@@ -301,10 +345,12 @@ class ToolCall(Vertical):
         truncated: bool,
         diff: str | None,
         model_name: str,
+        exit_code: int | None = None,
     ) -> list[Any]:
         head = headline_of(self.args)
+        metadata = metadata or {}
         primary_path = None
-        if isinstance(metadata, dict) and isinstance(metadata.get("path"), str):
+        if isinstance(metadata.get("path"), str):
             primary_path = metadata["path"]
 
         blocks: list[Any] = []
@@ -356,6 +402,22 @@ class ToolCall(Vertical):
                     Syntax(
                         truncate_text(diff, model_name, MAX_DIFF_TOKENS),
                         "diff",
+                        theme="nord",
+                        word_wrap=True,
+                    )
+                )
+
+        elif self.tool_name in TEXT_OUTPUT_TOOLS:
+            summary = self._result_summary(metadata, head)
+            if summary:
+                blocks.append(Text(" ┈ ".join(summary), style=PALETTE["graphite"]))
+            if self.tool_name == "shell" and exit_code:
+                blocks.append(Text(f"exit code {exit_code}", style=PALETTE["sand"]))
+            if output.strip():
+                blocks.append(
+                    Syntax(
+                        truncate_text(output, model_name, MAX_BLOCK_TOKENS),
+                        "text",
                         theme="nord",
                         word_wrap=True,
                     )
@@ -776,6 +838,7 @@ class RelayApp(App):
             name,
             self._tool_kind(name),
             self._relativise(data.get("arguments", {})),
+            self.config.cwd,
         )
         self._tools[call_id] = widget
         await self._append(widget)
@@ -792,6 +855,7 @@ class RelayApp(App):
             data.get("truncated", False),
             data.get("diff"),
             self.config.model_name,
+            data.get("exit_code"),
         )
         self.transcript.scroll_end(animate=False)
 

@@ -249,8 +249,7 @@ class TUI:
             format_elapsed(time.monotonic() - started_at) if started_at is not None else None
         )
         display_args = self.tool_args_by_call_id.pop(call_id, {})
-
-        args = self.tool_args_by_call_id(call_id, {})
+        args = display_args
 
         status = Text()
         if not success:
@@ -269,8 +268,9 @@ class TUI:
             status,
         )
 
+        metadata = metadata or {}
         primary_path = None
-        if isinstance(metadata, dict) and isinstance(metadata.get("path"), str):
+        if isinstance(metadata.get("path"), str):
             primary_path = metadata["path"]
 
         blocks: list[Any] = []
@@ -342,15 +342,15 @@ class TUI:
 
         elif name == 'list_dir' and success:
 
-            entries = metadata.get(entries)
-            path = metadata.get(path)
+            entries = metadata.get('entries')
+            path = metadata.get('path')
             summary = []
 
             if isinstance(path, str):
                 summary.append(path)
-            
+
             if isinstance(entries, int):
-                summary.append(f"{entries} entrries")
+                summary.append(f"{entries} entries")
             
             if summary:
                 blocks.append(Text(' ┈ '.join(summary), style='muted'))
