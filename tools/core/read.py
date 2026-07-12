@@ -23,7 +23,7 @@ class ReadFileParams(BaseModel):
     )
 
 class ReadFileTool(Tool):
-    name = 'read_file'
+    name = 'read'
     description = (
         "Read the contents of a file from the filesystem and return it as text with line numbers prefixed "
         "(e.g. '1: import os'). If 'offset' exceeds the file's line count, returns an empty result. "

@@ -7,7 +7,7 @@ from rich.syntax import Syntax
 
 from config.config import Config
 from ui.format import (
-    extract_read_file_code,
+    extract_read_code,
     format_elapsed,
     guess_language,
     headline as headline_of,
@@ -282,8 +282,8 @@ class TUI:
                     Text(truncate_text(output, "", MAX_BLOCK_TOKENS), style="muted")
                 )
 
-        elif name == "read_file" and primary_path:
-            result = extract_read_file_code(output)
+        elif name == "read" and primary_path:
+            result = extract_read_code(output)
             start_line, code = result if result else (1, output)
 
             shown_start = metadata.get("shown_start")
@@ -412,7 +412,7 @@ class TUI:
                     )
             )
 
-        elif name == 'web_search' and success:
+        elif name == 'search' and success:
 
             results = metadata.get('results')
             query = args.get('query')
@@ -440,7 +440,7 @@ class TUI:
                     )
             )
         
-        elif name == 'web_fetch' and success:
+        elif name == 'fetch' and success:
 
             status_code = metadata.get('status_code')
             content_length = metadata.get('content_length')

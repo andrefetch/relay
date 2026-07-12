@@ -10,7 +10,7 @@ BULKY_KEYS = frozenset({"content", "old_string", "new_string"})
 
 # Argument display order per tool; anything unlisted follows, sorted.
 ARG_ORDER = {
-    "read_file": ["path", "offset", "limit"],
+    "read": ["path", "offset", "limit"],
     "write_file": ["path", "create_directories", "content"],
     "edit": ["path", "replace_all", "old_string", "new_string"],
     "shell": ['command', 'timeout', 'cwd'],
@@ -115,8 +115,8 @@ def secondary_args(args: dict[str, Any], headline_key: str | None) -> dict[str, 
     }
 
 
-def extract_read_file_code(text: str) -> tuple[int, str] | None:
-    """Strip the `N|` line-number gutter from read_file output.
+def extract_read_code(text: str) -> tuple[int, str] | None:
+    """Strip the `N|` line-number gutter from read output.
 
     Returns (start_line, code) or None if the text isn't in that shape.
     """

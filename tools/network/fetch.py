@@ -20,7 +20,7 @@ class WebFetchParams(BaseModel):
     )
 
 class WebFetchTool(Tool):
-    name = 'web_fetch'
+    name = 'fetch'
     description = 'Fetch content from the URL. Returns the response body as text'
     kind = ToolKind.NETWORK
     schema = WebFetchParams

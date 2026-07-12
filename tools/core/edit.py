@@ -156,7 +156,7 @@ class EditTool(Tool):
                 "- All whitespace and indentation\n"
                 "- Line breaks\n"
                 "- Any invisible characters\n"
-                "Try re-reading the file using read_file tool and then editing."
+                "Try re-reading the file using read tool and then editing."
             )
 
         return ToolResult.error_result(error_msg)

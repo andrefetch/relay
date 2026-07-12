@@ -24,7 +24,7 @@ from agent.events import AgentEventType
 from config.config import Config
 from ui.format import (
     diff_stat,
-    extract_read_file_code,
+    extract_read_code,
     format_elapsed,
     guess_language,
     headline as headline_of,
@@ -60,8 +60,8 @@ TEXT_OUTPUT_TOOLS = frozenset(
         "list_dir", 
         "grep", 
         "glob",
-        "web_search",
-        "web_fetch",
+        "search",
+        "fetch",
     }
 
 )
@@ -389,8 +389,8 @@ class ToolCall(Vertical):
                     Text(truncate_text(output, "", MAX_BLOCK_TOKENS), style=PALETTE["graphite"])
                 )
 
-        elif self.tool_name == "read_file" and primary_path:
-            result = extract_read_file_code(output)
+        elif self.tool_name == "read" and primary_path:
+            result = extract_read_code(output)
             start_line, code = result if result else (1, output)
             shown_start = metadata.get("shown_start")
             shown_end = metadata.get("shown_end")
