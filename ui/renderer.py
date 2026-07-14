@@ -304,7 +304,7 @@ class TUI:
                 )
             )
 
-        elif name in {"write_file", "edit"} and success:
+        elif name in {"write", "edit"} and success:
             blocks.append(Text(output.strip() or "Completed", style="muted"))
             if diff:
                 blocks.append(

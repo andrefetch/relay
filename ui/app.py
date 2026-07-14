@@ -413,7 +413,7 @@ class ToolCall(Vertical):
                 )
             )
 
-        elif self.tool_name in {"write_file", "edit"}:
+        elif self.tool_name in {"write", "edit"}:
             blocks.append(Text(output.strip() or "Completed", style=PALETTE["graphite"]))
             if diff:
                 blocks.append(

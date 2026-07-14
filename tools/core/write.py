@@ -12,13 +12,13 @@ class WriteFileParams(BaseModel):
         ...,
         description="Content to write to a file."
     )
-    create_directiories: bool = Field(
+    create_directories: bool = Field(
         True,
         description='Create parent directories if they are yet to exist.'
     )
 
 class WriteFileTool(Tool):
-    name = 'write_file'
+    name = 'write'
     description = (
         "Write contents to a file, creates a file if it doesn't exist, "
         "or overwrites the file if it does. Parent directories are created automatically."
@@ -44,7 +44,7 @@ class WriteFileTool(Tool):
                 pass
         
         try:
-            if params.create_directiories:
+            if params.create_directories:
                 ensure_parent_dir(path)
             elif not path.parent.exists():
                 return ToolResult.error_result(f'Parent directory does not exist: {path.parent}')

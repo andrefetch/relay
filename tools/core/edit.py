@@ -29,7 +29,7 @@ class EditTool(Tool):
         "Edit a file by replacing text, the old_string varaible must match exactly"
         "( including whitespace and indentation ) and must be unique in the file"
         "unless replace_all is true, use thsi for precise, surgical edits"
-        "For creating new files or complete rewrites, use write_file instead"
+        "For creating new files or complete rewrites, use write instead"
     )
     kind = ToolKind.WRITE
     schema = EditParams
@@ -72,7 +72,7 @@ class EditTool(Tool):
 
         if not params.old_string:
             return ToolResult.error_result(
-                'old_string is empty but file exists. Provide old_string to edit, or use write_file to overwrite the file.'
+                'old_string is empty but file exists. Provide old_string to edit, or use write to overwrite the file.'
             )
         
         occurrence_count = old_content.count(params.old_string)
