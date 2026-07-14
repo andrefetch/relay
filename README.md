@@ -9,16 +9,6 @@ An open-sourced AI coding agent, a terminal-based assistant that can read your c
 > [!WARNING]
 > **Work in progress.** The agent loop, tool calling, and terminal UI work end to end, but there is **no approval flow yet**. The interactive TUI auto-approves every tool, so Relay can change files and run commands without asking, use it in a directory you don't mind it touching.
 
-## What's in development
-
-- Interactive TUI with streaming responses and tool call management
-- One-shot mode for command-line usage
-- Direct LLM chat via OpenRouter (OpenAI-compatible endpoint)
-- Browser login with OAuth PKCE (no client secret)
-- Tool calling with five core tools: `read`, `write`, `edit`, `shell`, `list_dir`
-- Context usage tracking
-- Layered TOML config system (system + project)
-- Tool approval system (one-shot mode only; TUI auto-approves)
 
 ## Getting started
 
