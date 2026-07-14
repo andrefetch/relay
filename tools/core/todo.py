@@ -1,72 +1,104 @@
-from ddgs import DDGS
+import uuid
 
+from config.config import Config
 from tools.base import Tool, ToolInvocation, ToolKind, ToolResult
 from pydantic import BaseModel, Field
 
-class WebSearchParams(BaseModel):
+class TodoParams(BaseModel):
 
-    query: str = Field(
+    action: str = Field(
         ...,
-        description='Search query'
+        description="Action: 'add', 'complete, 'list', 'clear'"
+    ),
+
+    id: str | None = Field(
+        None,
+        description="A Todo ID (for completed Todo(s) )",
+    ),
+
+    content = str | None = Field(
+        None,
+        description='The content for Todo add'
     )
 
-    max_results: int = Field(
-        10,
-        ge=1,
-        le=50,
-        description='Maximum results to return (default: 10)'
-    )
 
-class WebSearchTool(Tool):
-    name = 'search'
-    description = 'Search the web for information. Returns the search results that contains titles, URL(s) and snippets.'
-    kind = ToolKind.NETWORK
-    schema = WebSearchParams
+class TodoTool(Tool):
+    name = 'todo'
+    description = 'Manage a task list for the current session, use this to track progress on more complex and multi-step tasks that can get resourse intensive.'
+    kind = ToolKind.MEMORY
+    schema = TodoParams
 
-    async def execute(self, invocation: ToolInvocation) -> ToolResult:
-        params = WebSearchParams(**invocation.params)
+    def __init__(self, config: Config) -> None:
+        super().__init__(config)
+        self._todos: dict[str, str] = {}
     
+    async def execute(self, invocation: ToolInvocation) -> ToolResult:
+
+        params = TodoParams(**invocation.params)
+
         try:
-            results = DDGS().text(
-                params.query,
-                region='us-en',
-                safesearch='off',
-                timelimit='y',
-                page=1,
-                backend='auto'
-            )
-        except Exception as e:
-            return ToolResult.error_result(
-                f'Search failed: {e}'
-            )
 
-        if not results:
-            return ToolResult.success_result(
-                f'No results found for: {params.query}',
-                metadata = {
-                    'results': 0,
-                }
-            )
+            if params.action.lower() == 'add':
+                if not params.content:
+                    return ToolResult.error_result(
+                        "Content is required for the 'add' action."
+                    )
+                
+                todo_id = str(uuid.uuid4())[:8]
 
-        output_lines = [
-            f'Search results for: {params.query}'
-        ]
+                self._todos[todo_id] = params.content 
+                return ToolResult.success_result(
+                    f"Added todo [{todo_id}] : {params.content}"
+                )
 
-        for i, result in enumerate(results, start=1):
-            output_lines.append(f"{i}. Title: {result['title']}")
-            output_lines.append(f"     URL: {result['href']}")
-            if result.get('body'):
-                output_lines.append(f"  Snippet: {result['body']}")
+            elif params.action.lower() == 'complete':
+                if not params.content:
+                    return ToolResult.error_result(
+                        "Content is required for the 'complete' action."
+                    )
+                if params.id not in self._todos:
+                    return ToolResult.error_result(
+                        f"Todo not found: {params.id}"
+                    )
+                
+                content = self._todos.pop(params.id)
+                return ToolResult.success_result(
+                    f"Completed todo [{params.id}]: {params.content}"
+                )
             
-            output_lines.append("")
-        
-        return ToolResult.success_result(
-            '\n'.join(output_lines),
-            metadata = {
-                'results': len(results),
-            }
-        )
+            elif params.content == 'list':
+                if not self._todos:
+                    return ToolResult.success_result(
+                        "No todos."
+                    )
+                
+                lines = ['Todos:']
 
+                for todo_id, content in self._todos.items():
+                    lines.append(f" [{todo_id}] [{content}]")
+                return ToolResult.success_result(
+                    "\n".join(lines)
+                )
+            
+            elif params.action == 'clear':
+
+                count = len(self._todos)
+
+                self._todos.clear()
+                return ToolResult.success_result(
+                    f"Cleared {count} todo(s)."
+                )
+
+            else:
+                return ToolResult.error_result(
+                    f"Unknown action: {params.action}"
+                )
+        
+        except Exception as e:
+
+            return ToolResult.error_result(
+                f"Unknown error: {e}"
+            )
 
 
        
