@@ -7,7 +7,7 @@
 An open-sourced AI coding agent, a terminal-based assistant that can read your code, call tools, and help you build.
 
 > [!WARNING]
-> **Work in progress.** The agent loop, tool calling, and terminal UI work end to end, but there is **no approval flow yet**. The interactive TUI auto-approves every tool, so Relay can change files and run commands without asking — use it in a directory you don't mind it touching.
+> **Work in progress.** The agent loop, tool calling, and terminal UI work end to end, but there is **no approval flow yet**. The interactive TUI auto-approves every tool, so Relay can change files and run commands without asking, use it in a directory you don't mind it touching.
 
 ## What's in development
 
