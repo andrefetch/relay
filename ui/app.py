@@ -81,6 +81,20 @@ def _tilde(path: str) -> str:
     return f"~{path[len(home):]}" if path.startswith(home) else path
 
 
+def _labelled_rule(label: Text, width: int) -> Text:
+    """`── label ──────` filling `width`, so a section reads as a divider."""
+    lead = 2
+    gap = 2  # one space either side of the label
+    trail = max(width - lead - gap - label.cell_len, 0)
+
+    rule = Text("─" * lead, style=PALETTE["slate"])
+    rule.append(" ")
+    rule.append_text(label)
+    rule.append(" ")
+    rule.append("─" * trail, style=PALETTE["slate"])
+    return rule
+
+
 class Footer(Static):
     """cwd on the left; keybind hint and version on the right."""
 
@@ -131,19 +145,108 @@ class PromptRule(Static):
         width = self.size.width
         if not width:
             return
+        self.update(_labelled_rule(self._label(), width))
 
-        label = self._label()
-        # ── label ──────────────────────────────────────────
-        lead = 2
-        gap = 2  # one space either side of the label
-        trail = max(width - lead - gap - label.cell_len, 0)
 
-        rule = Text("─" * lead, style=PALETTE["slate"])
-        rule.append(" ")
-        rule.append_text(label)
-        rule.append(" ")
-        rule.append("─" * trail, style=PALETTE["slate"])
-        self.update(rule)
+class TodoPanel(Static):
+    """The session's todo list, pinned above the prompt and redrawn live.
+
+    The transcript scrolls away, so a checklist printed inside a tool row is
+    gone by the time the next tool runs. This sits outside the scroll and
+    always shows the current state of the list.
+    """
+
+    # The list has to stay a glance, not a page: a long one is windowed around
+    # whatever is in progress rather than pushing the transcript off screen.
+    MAX_ROWS = 8
+
+    MARKERS = {
+        "completed": ("✔", PALETTE["teal"], f"{PALETTE['graphite']} strike"),
+        "in_progress": ("▶", PALETTE["accent"], f"bold {PALETTE['bright']}"),
+        "pending": ("☐", PALETTE["slate"], PALETTE["silver"]),
+    }
+
+    def __init__(self) -> None:
+        super().__init__()
+        self._todos: list[dict[str, Any]] = []
+        self._completed = 0
+
+    def on_mount(self) -> None:
+        self.display = False
+
+    def on_resize(self) -> None:
+        if self._todos:
+            self._draw()
+
+    def set_todos(self, metadata: dict[str, Any]) -> None:
+        self._todos = [todo for todo in (metadata.get("todos") or []) if isinstance(todo, dict)]
+        self._completed = sum(
+            1 for todo in self._todos if todo.get("status") == "completed"
+        )
+        # The panel is a view of work still outstanding. An empty list, or one
+        # where everything is ticked, has nothing left to track — so it gives
+        # its rows back to the transcript instead of lingering above the prompt.
+        self.display = bool(self._todos) and self._completed < len(self._todos)
+        if self.display:
+            self._draw()
+
+    def _window(self) -> tuple[list[dict[str, Any]], int, int]:
+        """The rows to draw, plus how many are hidden above and below them."""
+        if len(self._todos) <= self.MAX_ROWS:
+            return self._todos, 0, 0
+
+        active = next(
+            (
+                index
+                for index, todo in enumerate(self._todos)
+                if todo.get("status") == "in_progress"
+            ),
+            0,
+        )
+        # Keep one row of context above the active todo where there is room.
+        start = min(max(active - 1, 0), len(self._todos) - self.MAX_ROWS)
+        end = start + self.MAX_ROWS
+        return self._todos[start:end], start, len(self._todos) - end
+
+    def _header(self) -> Text:
+        label = Text("todos", style=PALETTE["silver"])
+        label.append("  ·  ", style=PALETTE["slate"])
+        label.append(f"{self._completed}/{len(self._todos)}", style=PALETTE["accent"])
+        return label
+
+    def _draw(self) -> None:
+        width = self.size.width
+        if not width:
+            return
+
+        rows, above, below = self._window()
+
+        checklist = Table.grid(padding=(0, 1))
+        checklist.add_column(no_wrap=True)
+        checklist.add_column(overflow="ellipsis", no_wrap=True)
+
+        def add_elision(marker: str, count: int) -> None:
+            checklist.add_row(
+                Text(marker, style=PALETTE["graphite"]),
+                Text(f"{count} more", style=PALETTE["graphite"]),
+            )
+
+        if above:
+            add_elision("↑", above)
+
+        for todo in rows:
+            marker, marker_style, content_style = self.MARKERS.get(
+                str(todo.get("status")), self.MARKERS["pending"]
+            )
+            checklist.add_row(
+                Text(marker, style=marker_style),
+                Text(str(todo.get("content", "")), style=content_style),
+            )
+
+        if below:
+            add_elision("↓", below)
+
+        self.update(Group(_labelled_rule(self._header(), width), checklist))
 
 
 class Caret(Static):
@@ -298,6 +401,11 @@ class ToolCall(Vertical):
                 # So a collapsed edit still says how big it was.
                 self._status.append(diff_stat(diff), style=PALETTE["silver"])
                 self._status.append(" · ", style=PALETTE["graphite"])
+            total = (metadata or {}).get("total")
+            completed = (metadata or {}).get("completed")
+            if self.tool_name == "todo" and isinstance(total, int) and isinstance(completed, int) and total:
+                self._status.append(f"{completed}/{total}", style=PALETTE["silver"])
+                self._status.append(" · ", style=PALETTE["graphite"])
             self._status.append("✓ ", style=PALETTE["teal"])
         self._status.append(elapsed, style=PALETTE["graphite"])
 
@@ -370,6 +478,11 @@ class ToolCall(Vertical):
         primary_path = None
         if isinstance(metadata.get("path"), str):
             primary_path = metadata["path"]
+
+        # The live panel above the prompt already holds the list; re-printing it
+        # here on every add/start/complete would bury the transcript in copies.
+        if success and self.tool_name == "todo":
+            return []
 
         blocks: list[Any] = []
 
@@ -608,6 +721,12 @@ class RelayApp(App):
         content-align: center middle;
     }}
 
+    /* Sits between the transcript and the prompt, so it never scrolls away. */
+    TodoPanel {{
+        height: auto;
+        margin-top: 1;
+    }}
+
     PromptRule {{
         height: 1;
         margin-top: 1;
@@ -708,6 +827,7 @@ class RelayApp(App):
                 Splash(str(self.config.cwd), self.config.model_name),
                 id="transcript",
             )
+            yield TodoPanel()
             yield PromptRule(self.config.model_name)
             with PromptRow():
                 yield Caret("❯")
@@ -721,6 +841,10 @@ class RelayApp(App):
     @property
     def prompt_rule(self) -> PromptRule:
         return self.query_one(PromptRule)
+
+    @property
+    def todo_panel(self) -> TodoPanel:
+        return self.query_one(TodoPanel)
 
     async def on_mount(self) -> None:
         self.agent = await self._stack.enter_async_context(
@@ -862,9 +986,16 @@ class RelayApp(App):
         await self._append(widget)
 
     async def _tool_complete(self, data: dict[str, Any]) -> None:
+        # Ahead of the widget lookup: the list is the user's, and it should
+        # survive a tool row we've lost track of.
+        metadata = data.get("metadata") or {}
+        if data.get("name") == "todo" and data.get("success") and "todos" in metadata:
+            self.todo_panel.set_todos(metadata)
+
         widget = self._tools.pop(data.get("call_id", ""), None)
         if widget is None:
             return
+
         await widget.complete(
             data.get("success", False),
             data.get("output", ""),
