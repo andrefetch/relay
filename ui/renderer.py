@@ -177,6 +177,34 @@ class TUI:
                 display_args[key] = str(display_path_relative_to_cwd(value, self.cwd))
         return display_args
 
+    def _render_todos(self, metadata: dict[str, Any]) -> Table | Text:
+        """The whole list as a checklist, redrawn after every todo call."""
+        todos = metadata.get("todos") or []
+        if not todos:
+            return Text("No todos.", style="muted")
+
+        checklist = Table.grid(padding=(0, 1))
+        checklist.add_column(no_wrap=True)          # marker
+        checklist.add_column(overflow="fold")       # content
+        checklist.add_column(style="muted", no_wrap=True, justify="right")  # id
+
+        markers = {
+            "completed": ("✔", "success", "muted strike"),
+            "in_progress": ("▶", "info", "highlight"),
+            "pending": ("☐", "muted", "code"),
+        }
+
+        for todo in todos:
+            marker, marker_style, content_style = markers.get(
+                str(todo.get("status")), markers["pending"]
+            )
+            checklist.add_row(
+                Text(marker, style=marker_style),
+                Text(str(todo.get("content", "")), style=content_style),
+                Text(str(todo.get("id", ""))),
+            )
+        return checklist
+
     def _render_args_table(self, tool_name: str, args: dict[str, Any]) -> Table:
         table = Table.grid(padding=(0, 1))
         table.add_column(style="muted", justify="right", no_wrap=True)
@@ -474,6 +502,16 @@ class TUI:
                     )
             )
             
+        elif name == 'todo' and success:
+
+            completed = metadata.get('completed')
+            total = metadata.get('total')
+
+            if isinstance(completed, int) and isinstance(total, int) and total:
+                blocks.append(Text(f"{completed}/{total} completed", style='muted'))
+
+            blocks.append(self._render_todos(metadata))
+
         elif output.strip():
             blocks.append(
                 Text(truncate_text(output, "", MAX_BLOCK_TOKENS), style="code")
@@ -484,8 +522,10 @@ class TUI:
         if truncated:
             blocks.append(Text("Tool output was truncated", style="warning"))
 
+        # todo renders its own args as the checklist; an args table would just
+        # repeat the content that is about to be printed underneath it.
         secondary = secondary_args(display_args, head[0] if head else None)
-        if secondary:
+        if secondary and name != "todo":
             blocks.insert(0, self._render_args_table(name, secondary))
 
         self.console.print()

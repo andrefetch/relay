@@ -3,7 +3,7 @@ from typing import Any, Tuple
 import re
 
 # Shown beside the tool name instead of on its own row; first match wins.
-HEADLINE_KEYS = ("path", "command", "pattern", "url", "query")
+HEADLINE_KEYS = ("path", "command", "pattern", "url", "query", "action")
 
 # Summarised as a line/byte count rather than dumped verbatim.
 BULKY_KEYS = frozenset({"content", "old_string", "new_string"})
@@ -16,7 +16,8 @@ ARG_ORDER = {
     "shell": ['command', 'timeout', 'cwd'],
     "list_dir": ['path', 'inclide_hidden'],
     "grep": ['path', 'case_insensitive', 'pattern'],
-    "glob": ['path', 'pattern']
+    "glob": ['path', 'pattern'],
+    "todo": ['action', 'id', 'content'],
 }
 
 _EXTENSION_LANGUAGES = {
