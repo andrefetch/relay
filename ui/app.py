@@ -818,9 +818,6 @@ class RelayApp(App):
         self._thinking: Thinking | None = None
         self._busy = False
 
-    async def _confirm_tool(self, tool_name: str, arguments: dict[str, Any]) -> bool:
-        return True
-
     def compose(self) -> ComposeResult:
         with Vertical(id="column"):
             yield VerticalScroll(
@@ -849,7 +846,7 @@ class RelayApp(App):
 
     async def on_mount(self) -> None:
         self.agent = await self._stack.enter_async_context(
-            Agent(self.config, confirmation_handler=self._confirm_tool)
+            Agent(self.config)
         )
         self.query_one("#prompt", Input).focus()
 

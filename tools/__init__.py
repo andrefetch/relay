@@ -1,6 +1,6 @@
 """Tools module for the Relay agent."""
 
-from tools.base import Tool, ToolKind, ToolResult, ToolInvocation, ToolConfirmation
+from tools.base import Tool, ToolKind, ToolResult, ToolInvocation
 from tools.registry import ToolRegistry, create_default_registery
 
 __all__ = [
@@ -8,7 +8,6 @@ __all__ = [
     'ToolKind',
     'ToolResult',
     'ToolInvocation',
-    'ToolConfirmation',
     'ToolRegistry',
     'create_default_registery',
 ]

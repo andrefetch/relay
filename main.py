@@ -18,13 +18,6 @@ import sys
 
 DEFAULT_BASE_URL = "https://openrouter.ai/api/v1"
 
-async def confirm_tool(tool_name: str, arguments: dict) -> bool:
-    console.print(f"[warning]The agent wants to run [bold]{tool_name}[/bold] with arguments:[/warning]")
-    for key, value in arguments.items():
-        console.print(f"  {key}: {value}")
-    answer = await asyncio.to_thread(click.prompt, "Allow this tool? [y/N]", default="N", show_default=False)
-    return answer.strip().lower() in {"y", "yes"}
-
 console = get_console()
 
 class CLI:
@@ -40,7 +33,7 @@ class CLI:
         self.tui = TUI(config)
 
     async def run_single(self, message: str) -> str | None:
-        async with Agent(self.config, confirmation_handler=confirm_tool) as agent:
+        async with Agent(self.config) as agent:
             self.agent = agent
             return await self._process_message(message)
 

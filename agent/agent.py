@@ -1,20 +1,17 @@
 from __future__ import annotations
 import json
-from typing import AsyncGenerator, Awaitable, Callable
+from typing import AsyncGenerator
 from agent.session import Session
 from config.config import Config
 from agent.events import AgentEvent, AgentEventType
 from client.response import StreamEventType, ToolCall, ToolResultMessage
-from tools.base import ToolResult
 
 class Agent:
     def __init__(
         self,
         config: Config,
-        confirmation_handler: Callable[[str, dict], Awaitable[bool]] | None = None,
     ):
         self.config = config
-        self.confirmation_handler = confirmation_handler
         self.session: Session | None = Session(self.config)
 
     async def run(self, message: str):
@@ -104,28 +101,11 @@ class Agent:
                     tool_call.arguments
                 )
 
-                tool = self.session.tool_registery.get(tool_call.name)
-                approved = True
-                if tool and tool.is_mutating(tool_call.arguments):
-                    if self.confirmation_handler is None:
-                        approved = False
-                    else:
-                        approved = await self.confirmation_handler(
-                            tool_call.name,
-                            tool_call.arguments,
-                        )
-
-                if approved:
-                    result = await self.session.tool_registery.invoke(
-                        tool_call.name,
-                        tool_call.arguments,
-                        self.config.cwd,
-                    )
-                else:
-                    result = ToolResult.error_result(
-                        f"Tool execution denied: {tool_call.name}",
-                        metadata={"tool_name": tool_call.name, "denied": True},
-                    )
+                result = await self.session.tool_registery.invoke(
+                    tool_call.name,
+                    tool_call.arguments,
+                    self.config.cwd,
+                )
 
                 yield AgentEvent.tool_call_complete(
                     tool_call.call_id,
