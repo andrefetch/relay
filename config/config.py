@@ -1,12 +1,13 @@
 import os
 from pathlib import Path
+from typing import Any
 from pydantic import BaseModel, Field
 
 from config.credentials import load_credentials
 
 class ModelConfig(BaseModel):
 
-    name: str = "tencent/hy3:free"
+    name: str = ''
     
     temperature: float = Field(
         default=1, 
@@ -29,6 +30,11 @@ class Config(BaseModel):
     cwd: Path = Field(default_factory=Path.cwd)
     shell_environment: ShellEnvironmentConfig = Field(
         default_factory=ShellEnvironmentConfig
+    )
+
+    allowed_tools: list[str] | None = Field(
+        None,
+        description='If set, only these tools would be avaliable to the agent or subagents.'
     )
 
     max_turns: int = 100
@@ -74,3 +80,8 @@ class Config(BaseModel):
             errors.append(f"Working directory does not exist: {self.cwd}")
         
         return errors
+    
+    def to_dict(self) -> dict[str, Any]:
+        return self.model_dump(
+            mode='json'
+        )
