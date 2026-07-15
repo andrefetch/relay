@@ -63,7 +63,7 @@ class ShellTool(Tool):
         command = params.command.lower().strip()
         for dangerous in DANGEROUS_COMMANDS:
             if dangerous in command:
-                return ToolResult.error(
+                return ToolResult.error_result(
                     f'Command blocked: {params.command}',
                     metadata = {
                         'blocked': True

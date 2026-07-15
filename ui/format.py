@@ -11,7 +11,7 @@ ARG_ORDER = {
     "write": ["path", "create_directories", "content"],
     "edit": ["path", "replace_all", "old_string", "new_string"],
     "shell": ['command', 'timeout', 'cwd'],
-    "list_dir": ['path', 'inclide_hidden'],
+    "list_dir": ['path', 'include_hidden'],
     "grep": ['path', 'case_insensitive', 'pattern'],
     "glob": ['path', 'pattern'],
     "plan": ['action', 'id', 'content'],
