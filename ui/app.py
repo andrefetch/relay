@@ -136,14 +136,20 @@ class PromptRule(Static):
         self.update(_labelled_rule(self._label(), width))
 
 
-class TodoPanel(Static):
+class PlanPanel(Static):
+    """A right-hand sidebar that shows the current plan (a.k.a. todos).
 
-    MAX_ROWS = 8
+    It stays visible for the whole turn — including once every item is done, so
+    the finished plan reads back cleanly — and is wiped by ``clear()`` when the
+    next prompt starts, so stale items never bleed across prompts.
+    """
+
+    MAX_ROWS = 14
 
     MARKERS = {
         "completed": ("✔", PALETTE["teal"], f"{PALETTE['graphite']} strike"),
         "in_progress": ("▶", PALETTE["accent"], f"bold {PALETTE['bright']}"),
-        "pending": ("☐", PALETTE["slate"], PALETTE["silver"]),
+        "pending": ("○", PALETTE["slate"], PALETTE["silver"]),
     }
 
     def __init__(self) -> None:
@@ -158,12 +164,18 @@ class TodoPanel(Static):
         if self._todos:
             self._draw()
 
+    def clear(self) -> None:
+        """Forget the current plan and hide the panel (called on a new prompt)."""
+        self._todos = []
+        self._completed = 0
+        self.display = False
+
     def set_todos(self, metadata: dict[str, Any]) -> None:
         self._todos = [todo for todo in (metadata.get("todos") or []) if isinstance(todo, dict)]
         self._completed = sum(
             1 for todo in self._todos if todo.get("status") == "completed"
         )
-        self.display = bool(self._todos) and self._completed < len(self._todos)
+        self.display = bool(self._todos)
         if self.display:
             self._draw()
 
@@ -183,11 +195,20 @@ class TodoPanel(Static):
         end = start + self.MAX_ROWS
         return self._todos[start:end], start, len(self._todos) - end
 
-    def _header(self) -> Text:
-        label = Text("todos", style=PALETTE["silver"])
-        label.append("  ·  ", style=PALETTE["slate"])
-        label.append(f"{self._completed}/{len(self._todos)}", style=PALETTE["accent"])
-        return label
+    def _title(self) -> Text:
+        total = len(self._todos)
+        done = total and self._completed == total
+        title = Text("◆ ", style=PALETTE["teal"] if done else PALETTE["accent"])
+        title.append("Plan", style=f"bold {PALETTE['bright']}")
+        return title
+
+    def _progress(self, width: int) -> Text:
+        total = len(self._todos) or 1
+        track = max(width, 4)
+        filled = round(track * self._completed / total)
+        bar = Text("━" * filled, style=PALETTE["teal"])
+        bar.append("━" * (track - filled), style=PALETTE["slate"])
+        return bar
 
     def _draw(self) -> None:
         width = self.size.width
@@ -196,9 +217,14 @@ class TodoPanel(Static):
 
         rows, above, below = self._window()
 
+        header = _two_column(
+            self._title(),
+            Text(f"{self._completed}/{len(self._todos)}", style=PALETTE["silver"]),
+        )
+
         checklist = Table.grid(padding=(0, 1))
-        checklist.add_column(no_wrap=True)
-        checklist.add_column(overflow="ellipsis", no_wrap=True)
+        checklist.add_column(no_wrap=True, width=1)
+        checklist.add_column(overflow="fold")
 
         def add_elision(marker: str, count: int) -> None:
             checklist.add_row(
@@ -221,7 +247,14 @@ class TodoPanel(Static):
         if below:
             add_elision("↓", below)
 
-        self.update(Group(_labelled_rule(self._header(), width), checklist))
+        self.update(
+            Group(
+                header,
+                self._progress(width),
+                Text(),
+                checklist,
+            )
+        )
 
 
 class Caret(Static):
@@ -365,7 +398,7 @@ class ToolCall(Vertical):
                 self._status.append(" · ", style=PALETTE["graphite"])
             total = (metadata or {}).get("total")
             completed = (metadata or {}).get("completed")
-            if self.tool_name == "todo" and isinstance(total, int) and isinstance(completed, int) and total:
+            if self.tool_name == "plan" and isinstance(total, int) and isinstance(completed, int) and total:
                 self._status.append(f"{completed}/{total}", style=PALETTE["silver"])
                 self._status.append(" · ", style=PALETTE["graphite"])
             self._status.append("✓ ", style=PALETTE["teal"])
@@ -436,7 +469,7 @@ class ToolCall(Vertical):
         if isinstance(metadata.get("path"), str):
             primary_path = metadata["path"]
 
-        if success and self.tool_name == "todo":
+        if success and self.tool_name == "plan":
             return []
 
         blocks: list[Any] = []
@@ -664,10 +697,14 @@ class RelayApp(App):
         content-align: center middle;
     }}
 
-    /* Sits between the transcript and the prompt, so it never scrolls away. */
-    TodoPanel {{
-        height: auto;
-        margin-top: 1;
+    /* A fixed sidebar on the right edge, above the footer. Hidden until the
+       agent starts a plan; wiped clean when the next prompt begins. */
+    PlanPanel {{
+        dock: right;
+        width: 38;
+        height: 1fr;
+        padding: 1 2;
+        border-left: solid {PALETTE['slate']};
     }}
 
     PromptRule {{
@@ -768,12 +805,13 @@ class RelayApp(App):
                 Splash(str(self.config.cwd), self.config.model_name),
                 id="transcript",
             )
-            yield TodoPanel()
             yield PromptRule(self.config.model_name)
             with PromptRow():
                 yield Caret("❯")
                 yield Input(placeholder=random.choice(self.RANDOM_WELCOME), id="prompt")
+        # Footer docks the full width first so the plan sidebar sits above it.
         yield Footer(str(self.config.cwd))
+        yield PlanPanel()
 
     @property
     def transcript(self) -> VerticalScroll:
@@ -784,8 +822,8 @@ class RelayApp(App):
         return self.query_one(PromptRule)
 
     @property
-    def todo_panel(self) -> TodoPanel:
-        return self.query_one(TodoPanel)
+    def plan_panel(self) -> PlanPanel:
+        return self.query_one(PlanPanel)
 
     async def on_mount(self) -> None:
         self.agent = await self._stack.enter_async_context(
@@ -836,8 +874,19 @@ class RelayApp(App):
         for splash in self.query(Splash):
             await splash.remove()
 
+        # A new prompt starts a fresh plan: drop the previous turn's items so
+        # stale todos never linger next to unrelated work.
+        self._reset_plan()
+
         await self._append(UserMessage(Text(f"❯ {message}", style=PALETTE["bright"])))
         self._run_turn(message)
+
+    def _reset_plan(self) -> None:
+        self.plan_panel.clear()
+        if self.agent is not None:
+            tool = self.agent.session.tool_registery.get("plan")
+            if tool is not None and hasattr(tool, "reset"):
+                tool.reset()
 
     @work(exclusive=True)
     async def _run_turn(self, message: str) -> None:
@@ -921,8 +970,8 @@ class RelayApp(App):
 
     async def _tool_complete(self, data: dict[str, Any]) -> None:
         metadata = data.get("metadata") or {}
-        if data.get("name") == "todo" and data.get("success") and "todos" in metadata:
-            self.todo_panel.set_todos(metadata)
+        if data.get("name") == "plan" and data.get("success") and "todos" in metadata:
+            self.plan_panel.set_todos(metadata)
 
         widget = self._tools.pop(data.get("call_id", ""), None)
         if widget is None:

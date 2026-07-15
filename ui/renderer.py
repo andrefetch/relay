@@ -508,7 +508,7 @@ class TUI:
                     )
             )
             
-        elif name == 'todo' and success:
+        elif name == 'plan' and success:
 
             completed = metadata.get('completed')
             total = metadata.get('total')
@@ -545,7 +545,7 @@ class TUI:
             blocks.append(Text("Tool output was truncated", style="warning"))
 
         secondary = secondary_args(display_args, head[0] if head else None)
-        if secondary and name not in {"todo", "memory"}:
+        if secondary and name not in {"plan", "memory"}:
             blocks.insert(0, self._render_args_table(name, secondary))
 
         self.console.print()

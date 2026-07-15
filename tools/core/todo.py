@@ -28,8 +28,13 @@ class TodoParams(BaseModel):
 
 
 class TodoTool(Tool):
-    name = 'todo'
-    description = 'Manage a task list for the current session, use this to track progress on more complex and multi-step tasks that can get resourse intensive.'
+    name = 'plan'
+    description = (
+        'Manage the plan (a.k.a. todo list) for the current session. Use this to '
+        'track progress on complex, multi-step tasks. When the user asks you to '
+        'create or update a todo / todos, use this tool. Actions: add, complete, '
+        'list, clear.'
+    )
     kind = ToolKind.MEMORY
     schema = TodoParams
 
@@ -40,6 +45,11 @@ class TodoTool(Tool):
 
     def is_mutating(self, params: dict[str, Any]) -> bool:
         return False
+
+    def reset(self) -> None:
+        """Drop every tracked item so a new turn starts with a clean plan."""
+        self._todos.clear()
+        self._status.clear()
 
     def _snapshot(self) -> dict[str, Any]:
         todos = [
@@ -57,7 +67,7 @@ class TodoTool(Tool):
             return "No todos."
 
         snapshot = self._snapshot()
-        lines = [f"Todos ({snapshot['completed']}/{snapshot['total']} completed):"]
+        lines = [f"Plan ({snapshot['completed']}/{snapshot['total']} completed):"]
 
         for todo in snapshot['todos']:
             marker = 'x' if todo['status'] == COMPLETED else ' '

@@ -14,7 +14,7 @@ ARG_ORDER = {
     "list_dir": ['path', 'inclide_hidden'],
     "grep": ['path', 'case_insensitive', 'pattern'],
     "glob": ['path', 'pattern'],
-    "todo": ['action', 'id', 'content'],
+    "plan": ['action', 'id', 'content'],
     "memory": ['action', 'key', 'value'],
 }
 
