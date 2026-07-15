@@ -1,18 +1,3 @@
-"""OpenRouter OAuth (PKCE) login for `relay login`.
-
-Lets the user authorize relay in their browser instead of pasting a raw API
-key. We run the PKCE flow described at
-https://openrouter.ai/docs/use-cases/oauth-pkce:
-
-  1. Generate a random `code_verifier` and its S256 `code_challenge`.
-  2. Open the browser to openrouter.ai/auth with the challenge and a
-     localhost `callback_url` we're listening on.
-  3. OpenRouter redirects back to that callback with a one-time `code`.
-  4. Exchange `code` + `code_verifier` for a user-scoped API key.
-
-No client secret is involved, which is the whole point of PKCE for a public
-client like a CLI.
-"""
 import base64
 import hashlib
 import secrets
@@ -119,11 +104,6 @@ def _exchange_code(base_url: str, code: str, verifier: str) -> str:
 
 
 def login_with_oauth(base_url: str, open_browser=webbrowser.open) -> str:
-    """Run the PKCE flow and return a freshly minted OpenRouter API key.
-
-    `open_browser` is injectable for testing; it returns False when no browser
-    could be launched, in which case we still print the URL for manual use.
-    """
     verifier, challenge = _generate_pkce_pair()
 
     # Port 0 -> the OS hands us a free ephemeral port. OpenRouter accepts any

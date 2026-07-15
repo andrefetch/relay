@@ -32,7 +32,7 @@ class EditTool(Tool):
         "For creating new files or complete rewrites, use write instead"
     )
     kind = ToolKind.WRITE
-    schema = EditParams
+    schema = EditParams # type: ignore
 
     async def execute(
             self, 

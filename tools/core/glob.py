@@ -22,7 +22,7 @@ class GlobTool(Tool):
     name = 'glob'
     description = 'Find files matching a glob pattern. Supports ** for recursive search and matching.'
     kind = ToolKind.READ
-    schema = GlobParams
+    schema = GlobParams # type: ignore
 
     async def execute(self, invocation: ToolInvocation) -> ToolResult:
         params = GlobParams(**invocation.params)

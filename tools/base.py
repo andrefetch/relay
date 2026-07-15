@@ -181,7 +181,7 @@ class Tool(abc.ABC):
             if 'parameters' in schema:
                 result['parameters'] = schema["parameters"]
             else:
-                result["parameters"] = schema
+                result["parameters"] = schema # type: ignore
 
             return result
 
