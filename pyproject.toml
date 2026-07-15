@@ -1,0 +1,49 @@
+[build-system]
+requires = ["setuptools>=77.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "relay-cli"
+version = "0.1.0"
+description = "An open-sourced, terminal-based AI coding agent."
+readme = "README.md"
+requires-python = ">=3.11"
+license = "GPL-3.0-or-later"
+license-files = ["LICENSE"]
+authors = [{ name = "andrefetch" }]
+keywords = ["ai", "agent", "cli", "coding-assistant", "tui", "openrouter"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Software Development",
+]
+dependencies = [
+    "click>=8.4",
+    "ddgs>=9.14",
+    "httpx>=0.28",
+    "openai>=2.44",
+    "platformdirs>=4.10",
+    "pydantic>=2.13",
+    "rich>=15.0",
+    "textual>=8.2",
+    "tiktoken>=0.13",
+]
+
+[project.urls]
+Homepage = "https://github.com/andrefetch/relay"
+Repository = "https://github.com/andrefetch/relay"
+Issues = "https://github.com/andrefetch/relay/issues"
+
+[project.scripts]
+relay = "main:main"
+
+[tool.setuptools]
+py-modules = ["main"]
+
+[tool.setuptools.packages.find]
+include = ["agent*", "client*", "config*", "context*", "prompts*", "tools*", "ui*", "utils*"]
