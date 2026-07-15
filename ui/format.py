@@ -2,13 +2,10 @@ from pathlib import Path
 from typing import Any, Tuple
 import re
 
-# Shown beside the tool name instead of on its own row; first match wins.
 HEADLINE_KEYS = ("path", "command", "pattern", "url", "query", "action")
 
-# Summarised as a line/byte count rather than dumped verbatim.
 BULKY_KEYS = frozenset({"content", "old_string", "new_string"})
 
-# Argument display order per tool; anything unlisted follows, sorted.
 ARG_ORDER = {
     "read": ["path", "offset", "limit"],
     "write": ["path", "create_directories", "content"],
@@ -18,6 +15,7 @@ ARG_ORDER = {
     "grep": ['path', 'case_insensitive', 'pattern'],
     "glob": ['path', 'pattern'],
     "todo": ['action', 'id', 'content'],
+    "memory": ['action', 'key', 'value'],
 }
 
 _EXTENSION_LANGUAGES = {
@@ -77,13 +75,11 @@ def ordered_args(tool_name: str, args: dict[str, Any]) -> list[Tuple[str, Any]]:
             ordered.append((key, args[key]))
             seen.add(key)
 
-    # sorted() so a dict ordering change can't reshuffle the display
     ordered.extend((key, args[key]) for key in sorted(args.keys() - seen))
     return ordered
 
 
 def summarise_value(key: str, value: Any) -> str:
-    """Collapse bulky string args to a line/byte count."""
     if isinstance(value, str) and key in BULKY_KEYS:
         line_count = len(value.splitlines())
         byte_count = len(value.encode("utf-8", errors="replace"))
@@ -96,7 +92,6 @@ def summarise_value(key: str, value: Any) -> str:
 
 
 def headline(args: dict[str, Any]) -> tuple[str, str] | None:
-    """The one argument worth showing beside the tool name, as (key, text)."""
     for key in HEADLINE_KEYS:
         value = args.get(key)
         if isinstance(value, str) and value.strip():
@@ -108,7 +103,6 @@ def headline(args: dict[str, Any]) -> tuple[str, str] | None:
 
 
 def secondary_args(args: dict[str, Any], headline_key: str | None) -> dict[str, Any]:
-    """Args worth showing under the header, minus the one already shown inline."""
     return {
         key: value
         for key, value in args.items()
@@ -117,10 +111,6 @@ def secondary_args(args: dict[str, Any], headline_key: str | None) -> dict[str, 
 
 
 def extract_read_code(text: str) -> tuple[int, str] | None:
-    """Strip the `N|` line-number gutter from read output.
-
-    Returns (start_line, code) or None if the text isn't in that shape.
-    """
     body = text
     header_match = re.match(
         r"^Showing lines (\d+)-(\d+) of (\d+)[^\n]*\n\n", text, re.IGNORECASE
@@ -146,7 +136,6 @@ def extract_read_code(text: str) -> tuple[int, str] | None:
 
 
 def diff_stat(diff: str) -> str:
-    """`+12 -4` summary for a unified diff, ignoring the ---/+++ file headers."""
     added = removed = 0
     for line in diff.splitlines():
         if line.startswith("+") and not line.startswith("+++"):

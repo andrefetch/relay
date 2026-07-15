@@ -47,13 +47,9 @@ INTERRUPTED_SYMBOL = "⊘"
 
 LOGO_MIN_WIDTH = 29
 
-# Tool chatter is worth clipping; a diff is the thing you actually asked for,
-# so it gets a far larger budget before we cut it.
 MAX_BLOCK_TOKENS = 240
 MAX_DIFF_TOKENS = 4000
 
-# Tools whose output is plain text worth showing verbatim under a count summary,
-# rather than syntax-highlighted source or a diff.
 TEXT_OUTPUT_TOOLS = frozenset(
     {
         "shell", 
@@ -68,7 +64,6 @@ TEXT_OUTPUT_TOOLS = frozenset(
 
 
 def _two_column(left: Text, right: Text) -> Table:
-    """A grid that fills the width, so `right` truly sits on the right edge."""
     grid = Table.grid(expand=True)
     grid.add_column(overflow="ellipsis", no_wrap=True)
     grid.add_column(justify="right", no_wrap=True)
@@ -82,9 +77,8 @@ def _tilde(path: str) -> str:
 
 
 def _labelled_rule(label: Text, width: int) -> Text:
-    """`── label ──────` filling `width`, so a section reads as a divider."""
     lead = 2
-    gap = 2  # one space either side of the label
+    gap = 2
     trail = max(width - lead - gap - label.cell_len, 0)
 
     rule = Text("─" * lead, style=PALETTE["slate"])
@@ -96,7 +90,6 @@ def _labelled_rule(label: Text, width: int) -> Text:
 
 
 class Footer(Static):
-    """cwd on the left; keybind hint and version on the right."""
 
     def __init__(self, cwd: str) -> None:
         super().__init__()
@@ -110,11 +103,6 @@ class Footer(Static):
 
 
 class PromptRule(Static):
-    """A rule above the input, carrying the model and context usage inline.
-
-    Deliberately not a filled box: relay sits directly on the terminal's own
-    background rather than painting a panel over it.
-    """
 
     def __init__(self, model: str) -> None:
         super().__init__()
@@ -149,15 +137,7 @@ class PromptRule(Static):
 
 
 class TodoPanel(Static):
-    """The session's todo list, pinned above the prompt and redrawn live.
 
-    The transcript scrolls away, so a checklist printed inside a tool row is
-    gone by the time the next tool runs. This sits outside the scroll and
-    always shows the current state of the list.
-    """
-
-    # The list has to stay a glance, not a page: a long one is windowed around
-    # whatever is in progress rather than pushing the transcript off screen.
     MAX_ROWS = 8
 
     MARKERS = {
@@ -183,15 +163,11 @@ class TodoPanel(Static):
         self._completed = sum(
             1 for todo in self._todos if todo.get("status") == "completed"
         )
-        # The panel is a view of work still outstanding. An empty list, or one
-        # where everything is ticked, has nothing left to track — so it gives
-        # its rows back to the transcript instead of lingering above the prompt.
         self.display = bool(self._todos) and self._completed < len(self._todos)
         if self.display:
             self._draw()
 
     def _window(self) -> tuple[list[dict[str, Any]], int, int]:
-        """The rows to draw, plus how many are hidden above and below them."""
         if len(self._todos) <= self.MAX_ROWS:
             return self._todos, 0, 0
 
@@ -203,7 +179,6 @@ class TodoPanel(Static):
             ),
             0,
         )
-        # Keep one row of context above the active todo where there is room.
         start = min(max(active - 1, 0), len(self._todos) - self.MAX_ROWS)
         end = start + self.MAX_ROWS
         return self._todos[start:end], start, len(self._todos) - end
@@ -254,11 +229,10 @@ class Caret(Static):
 
 
 class PromptRow(Horizontal):
-    """`❯` plus the input, sitting on the bare terminal background."""
+    pass
 
 
 class ToolHeader(Static, can_focus=True):
-    """The always-visible row. Click or press enter to toggle the body."""
 
     BINDINGS = [Binding("enter", "toggle", "Toggle tool output", show=False)]
 
@@ -275,15 +249,10 @@ class ToolHeader(Static, can_focus=True):
 
 
 class ToolBody(Vertical):
-    """Holds the expanded output; the left border is the gutter."""
+    pass
 
 
 class ToolCall(Vertical):
-    """One tool invocation: a collapsed header row over an expandable body.
-
-    Starts in a `running` state and is mutated in place when the call
-    completes, rather than printing a second block.
-    """
 
     def __init__(
         self,
@@ -333,7 +302,6 @@ class ToolCall(Vertical):
         if self._failed:
             return "✖", PALETTE["red"]
         if not self._has_body:
-            # Nothing to expand, so don't imply there is.
             return "·", PALETTE["graphite"]
         return COLLAPSED_SYMBOL if self.collapsed else EXPANDED_SYMBOL, PALETTE["teal"]
 
@@ -343,11 +311,6 @@ class ToolCall(Vertical):
             self._timer = None
 
     def interrupt(self) -> None:
-        """The turn ended without a completion event for this call.
-
-        Without this the spinner timer runs forever and the row lies about
-        still being in flight.
-        """
         if self.done:
             return
         self._stop_timer()
@@ -398,7 +361,6 @@ class ToolCall(Vertical):
             self._status.append(" · ", style=PALETTE["graphite"])
         else:
             if diff:
-                # So a collapsed edit still says how big it was.
                 self._status.append(diff_stat(diff), style=PALETTE["silver"])
                 self._status.append(" · ", style=PALETTE["graphite"])
             total = (metadata or {}).get("total")
@@ -416,8 +378,6 @@ class ToolCall(Vertical):
         if blocks:
             await self._body.mount_all([Static(block) for block in blocks])
 
-        # A write is the change you asked for and a failure is the thing you
-        # need to see; everything else stays folded away.
         if self._has_body and (not success or self.tool_kind == "write"):
             self.collapsed = False
             self._body.display = True
@@ -427,11 +387,8 @@ class ToolCall(Vertical):
     def _result_summary(
         self, metadata: dict[str, Any], head: tuple[str, str] | None
     ) -> list[str]:
-        """Counts worth stating up front, so a collapsed row still tells you something."""
         summary: list[str] = []
 
-        # The path is only worth repeating when it wasn't the headline — for a
-        # bare `list_dir` or `grep` the tool resolved it and the header shows nothing.
         path = metadata.get("path")
         if not head and isinstance(path, str):
             summary.append(display_path_relative_to_cwd(path, self.cwd))
@@ -479,8 +436,6 @@ class ToolCall(Vertical):
         if isinstance(metadata.get("path"), str):
             primary_path = metadata["path"]
 
-        # The live panel above the prompt already holds the list; re-printing it
-        # here on every add/start/complete would bury the transcript in copies.
         if success and self.tool_name == "todo":
             return []
 
@@ -568,7 +523,6 @@ class UserMessage(Static):
 
 
 class AssistantMessage(Static):
-    """Accumulates streamed deltas."""
 
     def __init__(self) -> None:
         super().__init__()
@@ -580,7 +534,6 @@ class AssistantMessage(Static):
 
 
 class Splash(Static):
-    """Centred butterfly for the empty transcript; removed on the first message."""
 
     def __init__(self, cwd: str, model: str) -> None:
         super().__init__()
@@ -597,11 +550,6 @@ class Splash(Static):
         self._draw()
 
     def _caption(self, width: int) -> Text:
-        """Label/value rows, indented as one block so the labels stay in a column.
-
-        Centring is done by hand: rich's `justify="center"` re-centres each line
-        on its own width, which would rag the label column.
-        """
         label_width = max(len(label) for label, _ in self._rows)
         gutter = label_width + 2
         cells = [(label, Text(value, no_wrap=True)) for label, value in self._rows]
@@ -625,7 +573,6 @@ class Splash(Static):
         if not width:
             return
 
-        # The butterfly is 27 cells wide; below that it would wrap and shear.
         if width < LOGO_MIN_WIDTH:
             mark = Text("relay", style=f"bold {PALETTE['bright']}", justify="center")
         else:
@@ -650,10 +597,6 @@ def _elapsed(seconds: float) -> str:
 
 
 class Thinking(Static):
-    """Status line pinned below the transcript for the length of a turn.
-
-    Carries the spinner, a live elapsed clock, and the tokens burned so far.
-    """
 
     def __init__(self) -> None:
         super().__init__()
@@ -817,8 +760,6 @@ class RelayApp(App):
         self._busy = False
 
     async def _confirm_tool(self, tool_name: str, arguments: dict[str, Any]) -> bool:
-        # Approvals aren't built yet. This can't just be `None`: the agent reads
-        # a missing handler as a denial, so mutating tools would never run.
         return True
 
     def compose(self) -> ComposeResult:
@@ -856,8 +797,6 @@ class RelayApp(App):
         await self._stack.aclose()
 
     async def _append(self, widget: Widget) -> None:
-        # The thinking line stays pinned at the foot of the transcript for the
-        # whole turn, so new content has to slot in above it.
         if self._thinking is not None and self._thinking.is_mounted:
             await self.transcript.mount(widget, before=self._thinking)
         else:
@@ -874,11 +813,9 @@ class RelayApp(App):
                 tool.scroll_visible(animate=False)
 
     def action_toggle_all(self) -> None:
-        """Fold or unfold every tool call at once, like opencode's /details."""
         tools = [tool for tool in self.query(ToolCall) if tool.done and tool._has_body]
         if not tools:
             return
-        # If anything is open, fold everything; otherwise open everything.
         target_collapsed = any(not tool.collapsed for tool in tools)
         for tool in tools:
             if tool.collapsed != target_collapsed:
@@ -896,7 +833,6 @@ class RelayApp(App):
 
         event.input.value = ""
 
-        # The logo owns the empty state only; once there's a conversation it goes.
         for splash in self.query(Splash):
             await splash.remove()
 
@@ -945,14 +881,12 @@ class RelayApp(App):
                         Static(Text(str(event.data.get("error")), style=f"bold {PALETTE['red']}"))
                     )
                     break
-        except Exception as exc:  # surface rather than kill the app
+        except Exception as exc:
             await self._append(Static(Text(f"{type(exc).__name__}: {exc}", style=f"bold {PALETTE['red']}")))
         finally:
             self._thinking = None
             if thinking.is_mounted:
                 await thinking.remove()
-            # Any call still open never got a completion event: stop its
-            # spinner rather than leaving a timer running for the session.
             for pending in self._tools.values():
                 pending.interrupt()
             self._tools.clear()
@@ -986,8 +920,6 @@ class RelayApp(App):
         await self._append(widget)
 
     async def _tool_complete(self, data: dict[str, Any]) -> None:
-        # Ahead of the widget lookup: the list is the user's, and it should
-        # survive a tool row we've lost track of.
         metadata = data.get("metadata") or {}
         if data.get("name") == "todo" and data.get("success") and "todos" in metadata:
             self.todo_panel.set_todos(metadata)

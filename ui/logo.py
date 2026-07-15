@@ -17,23 +17,15 @@ RELAY_LOGO = """\
 _WHITE = (255, 255, 255)
 _SILVER = (168, 174, 186)
 
-# One pixel is two cells wide, or the letters come out squashed: terminal
-# cells are about twice as tall as they are wide.
 _PIXEL = "██"
 _LETTER_GAP = 1
 
 def small_wordmark(justify: str = "center") -> Text:
-    """A quiet, letter-spaced `relay` to sit under the butterfly."""
     r, g, b = _SILVER
     return Text(" ".join("relay"), style=f"rgb({r},{g},{b})", justify=justify, no_wrap=True)
 
 
 def gradient_logo(justify: str = "center") -> Text:
-    """The braille butterfly with a radial white→silver gradient.
-
-    Brightest at the centre, fading to silver at the edges all around, so the
-    butterfly appears lit from the middle.
-    """
     rows = RELAY_LOGO.split("\n")
     height = len(rows)
     width = max((len(row) for row in rows), default=1)

@@ -28,8 +28,6 @@ SPINNER_INTERVAL = 0.08
 
 GUTTER_CHAR = "│"
 
-# Tool chatter is worth clipping; a diff is the thing you actually asked for,
-# so it gets a far larger budget before we cut it.
 MAX_BLOCK_TOKENS = 2400
 MAX_DIFF_TOKENS = 4000
 
@@ -48,12 +46,6 @@ def random_thinking_text() -> str:
 
 
 class Gutter:
-    """Hang a renderable off a single coloured column in the left gutter.
-
-    Deliberately has no right border: wide content (syntax blocks, diffs) keeps
-    the full terminal width, and a mouse selection grabs the body text without
-    dragging a trailing border character onto every line.
-    """
 
     def __init__(self, renderable: Any, style: str = "border") -> None:
         self.renderable = renderable
@@ -98,7 +90,6 @@ class TUI:
         self._spinner_frame = 0
         self._thinking_label = ""
 
-    # ---- transient spinner -------------------------------------------------
 
     def _spinner_char(self) -> str:
         return SPINNER_FRAMES[self._spinner_frame % len(SPINNER_FRAMES)]
@@ -114,11 +105,6 @@ class TUI:
             pass
 
     def _start_spinner(self, render: Callable[[], Text]) -> None:
-        """Show a transient animated line that vanishes when stopped.
-
-        rich permits only one Live at a time, so thinking and running-tool
-        lines share this single slot; starting one implicitly ends the other.
-        """
         self._stop_spinner()
         self._spinner_frame = 0
         self._spinner_render = render
@@ -152,7 +138,6 @@ class TUI:
     def stop_thinking(self) -> None:
         self._stop_spinner()
 
-    # ---- assistant text ----------------------------------------------------
 
     def begin_assistant(self) -> None:
         self._stop_spinner()
@@ -167,7 +152,6 @@ class TUI:
     def stream_assistant_delta(self, content: str) -> None:
         self.console.print(content, end="", markup=False)
 
-    # ---- tool calls --------------------------------------------------------
 
     def _relativise(self, arguments: dict[str, Any]) -> dict[str, Any]:
         display_args = dict(arguments)
@@ -178,15 +162,14 @@ class TUI:
         return display_args
 
     def _render_todos(self, metadata: dict[str, Any]) -> Table | Text:
-        """The whole list as a checklist, redrawn after every todo call."""
         todos = metadata.get("todos") or []
         if not todos:
             return Text("No todos.", style="muted")
 
         checklist = Table.grid(padding=(0, 1))
-        checklist.add_column(no_wrap=True)          # marker
-        checklist.add_column(overflow="fold")       # content
-        checklist.add_column(style="muted", no_wrap=True, justify="right")  # id
+        checklist.add_column(no_wrap=True)
+        checklist.add_column(overflow="fold")
+        checklist.add_column(style="muted", no_wrap=True, justify="right")
 
         markers = {
             "completed": ("✔", "success", "muted strike"),
@@ -204,6 +187,30 @@ class TUI:
                 Text(str(todo.get("id", ""))),
             )
         return checklist
+
+    def _render_memory(self, metadata: dict[str, Any]) -> Table | Text:
+        entries = metadata.get("entries") or []
+        if not entries:
+            return Text("No memory stored.", style="muted")
+
+        active_key = metadata.get("active_key")
+
+        table = Table.grid(padding=(0, 1))
+        table.add_column(no_wrap=True)
+        table.add_column(style="info", no_wrap=True)
+        table.add_column(overflow="fold")
+
+        for entry in entries:
+            key = str(entry.get("key", ""))
+            is_active = active_key is not None and key == active_key
+            marker_style = "highlight" if is_active else "tool.memory"
+            value_style = "highlight" if is_active else "code"
+            table.add_row(
+                Text("●", style=marker_style),
+                Text(key),
+                Text(str(entry.get("value", "")), style=value_style),
+            )
+        return table
 
     def _render_args_table(self, tool_name: str, args: dict[str, Any]) -> Table:
         table = Table.grid(padding=(0, 1))
@@ -239,7 +246,6 @@ class TUI:
         tool_kind: str | None,
         arguments: dict[str, Any],
     ) -> None:
-        """Show a transient running line; the durable block lands on complete."""
         display_args = self._relativise(arguments)
         self.tool_args_by_call_id[call_id] = display_args
         self.tool_started_at[call_id] = time.monotonic()
@@ -512,6 +518,22 @@ class TUI:
 
             blocks.append(self._render_todos(metadata))
 
+        elif name == 'memory' and success:
+
+            action = metadata.get('action')
+            count = metadata.get('count')
+
+            summary = []
+            if isinstance(action, str):
+                summary.append(action)
+            if isinstance(count, int):
+                summary.append(f"{count} stored")
+
+            if summary:
+                blocks.append(Text(" ┈ ".join(summary), style='muted'))
+
+            blocks.append(self._render_memory(metadata))
+
         elif output.strip():
             blocks.append(
                 Text(truncate_text(output, "", MAX_BLOCK_TOKENS), style="code")
@@ -522,20 +544,16 @@ class TUI:
         if truncated:
             blocks.append(Text("Tool output was truncated", style="warning"))
 
-        # todo renders its own args as the checklist; an args table would just
-        # repeat the content that is about to be printed underneath it.
         secondary = secondary_args(display_args, head[0] if head else None)
-        if secondary and name != "todo":
+        if secondary and name not in {"todo", "memory"}:
             blocks.insert(0, self._render_args_table(name, secondary))
 
         self.console.print()
         self.console.print(header)
         self.console.print(Gutter(Group(*blocks), style=border_style))
 
-    # ---- usage -------------------------------------------------------------
 
     def render_usage(self, usage: dict[str, Any] | None) -> None:
-        """Print a dim one-line context/usage gauge after a turn completes."""
         if not usage:
             return
 

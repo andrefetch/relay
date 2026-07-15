@@ -63,18 +63,35 @@ class MemoryTool(Tool):
         data_dir = get_data_dir()
 
         data_dir.mkdir(
-            parents=True, 
+            parents=True,
             exist_ok=True
         )
 
         path = data_dir / 'user_memory.json'
 
         path.write_text(json.dumps(
-            memory, 
-            indent=2, 
+            memory,
+            indent=2,
             ensure_ascii=False
             )
         )
+
+    def _snapshot(
+        self,
+        memory: dict,
+        action: str,
+        key: str | None = None,
+    ) -> dict[str, Any]:
+        entries = memory.get('entries', {})
+        return {
+            'entries': [
+                {'key': k, 'value': v}
+                for k, v in sorted(entries.items())
+            ],
+            'count': len(entries),
+            'action': action,
+            'active_key': key,
+        }
 
     async def execute(self, invocation: ToolInvocation):
         
@@ -91,22 +108,25 @@ class MemoryTool(Tool):
                 self._save_memory(memory)
 
                 return ToolResult.success_result(
-                    f"Set memory: {params.key}"
+                    f"Set memory: {params.key}",
+                    metadata=self._snapshot(memory, "set", params.key),
                 )
-            
+
             elif params.action.lower() == "get":
                 if not params.key:
                     return ToolResult.error_result(
                         "Key required for: 'get' action"
                     )
-                
+
                 memory = self._load_memory()
-                if params.key not in memory:
+                if params.key not in memory.get('entries', {}):
                     return ToolResult.success_result(
-                        f"Memory not found: {params.key}"
+                        f"Memory not found: {params.key}",
+                        metadata=self._snapshot(memory, "get", params.key),
                     )
                 return ToolResult.success_result(
-                        f"Memory found: {params.key}: {memory['entries'][params.key]}"
+                        f"Memory found: {params.key}: {memory['entries'][params.key]}",
+                        metadata=self._snapshot(memory, "get", params.key),
                     )
             
             elif params.action == "delete":
@@ -124,9 +144,10 @@ class MemoryTool(Tool):
                 self._save_memory(memory)
 
                 return ToolResult.success_result(
-                    f"Deleted memory: {params.key}"
+                    f"Deleted memory: {params.key}",
+                    metadata=self._snapshot(memory, "delete", params.key),
                 )
-            
+
             elif params.action == "list":
 
                 memory = self._load_memory()
@@ -134,23 +155,29 @@ class MemoryTool(Tool):
 
                 if not entries:
                     return ToolResult.success_result(
-                        "No memory has been stored."
+                        "No memory has been stored.",
+                        metadata=self._snapshot(memory, "list"),
                     )
-                
+
                 lines = [f"Stored memories:"]
                 for key, value in sorted(entries.items()):
                     lines.append(f" {key}: {value}")
-                
+
                 return ToolResult.success_result(
-                    "\n".join(lines)
+                    "\n".join(lines),
+                    metadata=self._snapshot(memory, "list"),
                 )
-            
+
             elif params.action == "clear":
 
                 memory = self._load_memory()
                 count = len(memory.get('entries', {}))
+                memory['entries'] = {}
                 self._save_memory(memory)
-                return ToolResult.success_result(f"Cleared {count} entries")
+                return ToolResult.success_result(
+                    f"Cleared {count} entries",
+                    metadata=self._snapshot(memory, "clear"),
+                )
 
             else:
 

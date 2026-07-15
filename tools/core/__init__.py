@@ -10,6 +10,8 @@ from tools.core.todo import TodoTool
 from tools.network.search import WebSearchTool
 from tools.network.fetch import WebFetchTool
 
+from tools.memory.memory import MemoryTool
+
 from tools.base import Tool
 
 __all__ = [
@@ -23,6 +25,7 @@ __all__ = [
     'WebSearchTool',
     'WebFetchTool',
     'TodoTool',
+    'MemoryTool',
 ]
 
 def get_all_core_tools() -> list[Tool]:
@@ -37,4 +40,5 @@ def get_all_core_tools() -> list[Tool]:
         WebSearchTool,
         WebFetchTool,
         TodoTool,
+        MemoryTool,
     ]
