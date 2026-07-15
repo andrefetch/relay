@@ -1,8 +1,10 @@
+import json
 import uuid
 
 from client.llm_client import LLMClient
 from client.response import TokenUsage
 from config.config import Config
+from config.loader import get_data_dir
 from context.manager import ContextManager
 from tools.registry import create_default_registery
 from datetime import datetime
@@ -13,22 +15,51 @@ class Session:
         self.client = LLMClient(
             config=config,
         )
-        self.context_manager = ContextManager(config=config)
+        self.context_manager = ContextManager(
+            config=config, 
+            user_memory=self._load_memory()
+        )
         self.tool_registery = create_default_registery(config)
         self.session_id = str(uuid.uuid4()) # Unique identifiers to resume sessions
         self.created_at = datetime.now()
         self.updated_at = datetime.now()
 
-        # Usage from the most recent completion. prompt_tokens on the latest
-        # call reflects the full context currently in the window, so this
-        # doubles as the "context used" gauge.
         self.last_usage: TokenUsage | None = None
 
-        # Usage summed across every completion in the current turn. The agent
-        # loops once per tool round-trip, so this grows as the turn works.
         self.turn_usage = TokenUsage()
 
         self._turn_count = 0
+    
+    def _load_memory(self) -> str | None:
+
+        data_dir = get_data_dir()
+
+        data_dir.mkdir(
+            parents=True, 
+            exist_ok=True
+        )
+
+        path = data_dir / 'user_memory.json'
+
+        if not path.exists():
+            return None
+        
+        try:
+            content = path.read_text(
+                encoding='utf-8'
+            )
+            data = json.loads(content)
+            entries = data.get('entries')
+            if not entries:
+                return None
+            
+            lines = ["User prefrences and notes:"]
+            for key, value in entries.items():
+                lines.append(f"- {key}: {value}")
+            
+            return "\n".join(lines)
+        except Exception:
+            return None
 
     def reset_turn_usage(self) -> None:
         self.turn_usage = TokenUsage()
