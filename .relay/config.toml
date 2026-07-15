@@ -10,6 +10,6 @@ max_tool_output_tokens = 50000
 debug = false
 
 [model]
-name = "cohere/north-mini-code:free"
+name = "poolside/laguna-xs-2.1:free"
 temperature = 1.0
 context_window = 256000

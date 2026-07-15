@@ -433,7 +433,7 @@ class ToolCall(Vertical):
         if blocks:
             await self._body.mount_all([Static(block) for block in blocks])
 
-        if self._has_body and (not success or self.tool_kind == "write"):
+        if self._has_body and (not success or self.tool_kind in {"write", "subagent"}):
             self.collapsed = False
             self._body.display = True
 
@@ -548,7 +548,7 @@ class ToolCall(Vertical):
                     )
                 )
 
-        elif self.tool_name in TEXT_OUTPUT_TOOLS:
+        elif self.tool_name in TEXT_OUTPUT_TOOLS or self.tool_kind == "subagent":
             summary = self._result_summary(metadata, head)
             if summary:
                 blocks.append(Text(" ┈ ".join(summary), style=PALETTE["graphite"]))

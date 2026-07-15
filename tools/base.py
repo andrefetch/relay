@@ -17,6 +17,7 @@ class ToolKind(str, Enum):
     MEMORY = "memory"
     MCP = "mcp"
     GIT = "git"
+    SUBAGENT = "subagent"
 
 @dataclass
 class FileDiff:

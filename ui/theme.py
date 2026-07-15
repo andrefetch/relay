@@ -57,4 +57,5 @@ def tool_colour(tool_kind: str | None) -> str:
         "network": PALETTE["teal"],
         "memory": PALETTE["violet"],
         "mcp": PALETTE["violet"],
+        "subagent": PALETTE["sand"],
     }.get(tool_kind or "", PALETTE["accent"])

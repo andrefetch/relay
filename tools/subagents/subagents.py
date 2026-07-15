@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field
 from config import Config
 from dataclasses import dataclass
 from tools import Tool, ToolInvocation
-from tools.base import ToolResult
+from tools.base import ToolResult, ToolKind
 
 class SubagentParams(BaseModel):
     goal: str = Field(
@@ -38,6 +38,7 @@ class SubAgentTool(Tool):
         return self.definition.description
 
     schema = SubagentParams
+    kind = ToolKind.SUBAGENT
 
     def is_mutating(self, params: dict[str, Any]) -> bool:
         return True
