@@ -163,6 +163,8 @@ CODE_REVIEWER = SubagentDefinition(
 
 )
 
+# Will add more subagent definitions
+
 def get_default_subagent_definitions() -> list[SubagentDefinition]:
     return [
         CODEBASE_INVESTIGATOR,
