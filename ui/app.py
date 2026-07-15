@@ -156,6 +156,7 @@ class PlanPanel(Static):
         super().__init__()
         self._todos: list[dict[str, Any]] = []
         self._completed = 0
+        self._collapsed = False
 
     def on_mount(self) -> None:
         self.display = False
@@ -165,10 +166,24 @@ class PlanPanel(Static):
             self._draw()
 
     def clear(self) -> None:
-        """Forget the current plan and hide the panel (called on a new prompt)."""
+        """Forget the current plan and hide the panel (called on a new prompt).
+
+        The collapsed/expanded preference is intentionally preserved across
+        prompts so it survives once the user has chosen a view.
+        """
         self._todos = []
         self._completed = 0
         self.display = False
+
+    def toggle_collapsed(self) -> None:
+        """Fold the checklist down to just its header, or unfold it again."""
+        self._collapsed = not self._collapsed
+        if self._todos:
+            self._draw()
+
+    @property
+    def collapsed(self) -> bool:
+        return self._collapsed
 
     def set_todos(self, metadata: dict[str, Any]) -> None:
         self._todos = [todo for todo in (metadata.get("todos") or []) if isinstance(todo, dict)]
@@ -198,7 +213,8 @@ class PlanPanel(Static):
     def _title(self) -> Text:
         total = len(self._todos)
         done = total and self._completed == total
-        title = Text("◆ ", style=PALETTE["teal"] if done else PALETTE["accent"])
+        chevron = COLLAPSED_SYMBOL if self._collapsed else EXPANDED_SYMBOL
+        title = Text(f"{chevron} ", style=PALETTE["teal"] if done else PALETTE["accent"])
         title.append("Plan", style=f"bold {PALETTE['bright']}")
         return title
 
@@ -215,12 +231,18 @@ class PlanPanel(Static):
         if not width:
             return
 
-        rows, above, below = self._window()
-
         header = _two_column(
             self._title(),
             Text(f"{self._completed}/{len(self._todos)}", style=PALETTE["silver"]),
         )
+
+        # Collapsed: just the header + progress, so a long plan folds away.
+        if self._collapsed:
+            hint = Text(f"{len(self._todos)} items · ctrl+t", style=PALETTE["graphite"])
+            self.update(Group(header, self._progress(width), Text(), hint))
+            return
+
+        rows, above, below = self._window()
 
         checklist = Table.grid(padding=(0, 1))
         checklist.add_column(no_wrap=True, width=1)
@@ -852,12 +874,24 @@ class RelayApp(App):
 
     def action_toggle_all(self) -> None:
         tools = [tool for tool in self.query(ToolCall) if tool.done and tool._has_body]
-        if not tools:
+        panel = self.plan_panel
+        plan_visible = panel.display
+        if not tools and not plan_visible:
             return
-        target_collapsed = any(not tool.collapsed for tool in tools)
+
+        # One "details" gesture: if anything is expanded, collapse everything;
+        # otherwise expand it all. Keeps tools and the plan in step.
+        anything_expanded = any(not tool.collapsed for tool in tools) or (
+            plan_visible and not panel.collapsed
+        )
+        target_collapsed = anything_expanded
+
         for tool in tools:
             if tool.collapsed != target_collapsed:
                 tool.toggle()
+
+        if plan_visible and panel.collapsed != target_collapsed:
+            panel.toggle_collapsed()
 
     @on(Input.Submitted, "#prompt")
     async def _submit(self, event: Input.Submitted) -> None:
