@@ -13,18 +13,16 @@ An open-sourced AI coding agent, a terminal-based assistant that can read your c
 ## Getting started
 
 ```bash
-# 1. Install dependencies
-python -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
+# 1. Install Relay
+pip install relay-code
 
 # 2. Log in (opens your browser to authorize with OpenRouter)
-python main.py login
+relay login
 
 # 3. Run it
-python main.py                 # interactive mode
-python main.py "your prompt"   # single-shot mode
-python main.py --cwd /path     # run against a different working directory
+relay                 # interactive mode
+relay "your prompt"   # single-shot mode
+relay --cwd /path     # run against a different working directory
 ```
 
 ## License
