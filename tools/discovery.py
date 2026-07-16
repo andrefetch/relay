@@ -4,6 +4,7 @@ from pathlib import Path
 import sys
 from typing import Any
 
+from config.loader import get_config_dir
 from tools import Tool
 
 from config.config import Config
@@ -83,4 +84,6 @@ class ToolDiscoveryManager:
                 continue
     
     def discover(self) -> None:
+        
         self.discover_from_dir(self.config.cwd)
+        self.discover_from_dir(get_config_dir())
