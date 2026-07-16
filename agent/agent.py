@@ -135,7 +135,7 @@ class Agent:
             exc_type, 
             exc_val, 
             exc_tb
-            ) -> None:
+        ) -> None:
 
         if self.session and self.session.client:
             await self.session.client.close()

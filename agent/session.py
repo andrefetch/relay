@@ -6,6 +6,7 @@ from client.response import TokenUsage
 from config.config import Config
 from config.loader import get_data_dir
 from context.manager import ContextManager
+from tools.discovery import ToolDiscoveryManager
 from tools.registry import create_default_registery
 from datetime import datetime
 
@@ -20,6 +21,10 @@ class Session:
             user_memory=self._load_memory()
         )
         self.tool_registery = create_default_registery(config)
+        self.discovery_manager = ToolDiscoveryManager(
+            self.config,
+            self.tool_registery
+        )
         self.session_id = str(uuid.uuid4()) # Unique identifiers to resume sessions
         self.created_at = datetime.now()
         self.updated_at = datetime.now()
@@ -27,6 +32,8 @@ class Session:
         self.last_usage: TokenUsage | None = None
 
         self.turn_usage = TokenUsage()
+
+        self.discovery_manager.discover()
 
         self._turn_count = 0
     
