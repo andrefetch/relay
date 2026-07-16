@@ -1,6 +1,5 @@
 from pathlib import Path
 from agent.agent import Agent
-from agent.events import AgentEventType
 from config.config import Config
 from config.loader import load_config
 from config.credentials import (
@@ -10,8 +9,9 @@ from config.credentials import (
     save_credentials,
 )
 from config.oauth import OAuthError, login_with_oauth
-from ui.app import RelayApp
 from ui.renderer import TUI, get_console
+from ui.repl import Repl
+from ui.stream import stream_turn
 import asyncio
 import click
 import sys
@@ -20,92 +20,15 @@ DEFAULT_BASE_URL = "https://openrouter.ai/api/v1"
 
 console = get_console()
 
-class CLI:
+async def run_once(config: Config, message: str) -> str | None:
     """One-shot (`relay "prompt"`) driver.
 
-    Stays line-oriented so the output can be piped and redirected; the
-    interactive front-end is the full-screen RelayApp.
+    Same renderer as the interactive REPL, minus the input loop, so output
+    can be piped and redirected.
     """
+    async with Agent(config) as agent:
+        return await stream_turn(TUI(config), agent, message)
 
-    def __init__(self, config: Config):
-        self.agent: Agent | None = None
-        self.config = config
-        self.tui = TUI(config)
-
-    async def run_single(self, message: str) -> str | None:
-        async with Agent(self.config) as agent:
-            self.agent = agent
-            return await self._process_message(message)
-
-    def _get_tool_kind(self, tool_name: str) -> str | None:
-        tool = self.agent.session.tool_registery.get(tool_name)
-        if not tool:
-            return None
-        return tool.kind.value
-    
-    async def _process_message(self, message: str) -> str | None:
-        if not self.agent:
-            return None
-        
-        assistant_streaming = False
-        final_response: str | None = None
-        thinking = False
-
-        try:
-            async for event in self.agent.run(message):
-                if event.type == AgentEventType.AGENT_START:
-                    self.tui.start_thinking()
-                    thinking = True
-                    continue
-
-                if thinking:
-                    self.tui.stop_thinking()
-                    thinking = False
-
-                if event.type == AgentEventType.TEXT_DELTA:
-                    content = event.data.get("content", "")
-                    if not assistant_streaming:
-                        self.tui.begin_assistant()
-                        assistant_streaming = True
-                    self.tui.stream_assistant_delta(content)
-                elif event.type == AgentEventType.TEXT_COMPLETE:
-                    final_response = event.data.get("content")
-                    if assistant_streaming:
-                        self.tui.end_assistant()
-                        assistant_streaming = False
-                elif event.type == AgentEventType.AGENT_END:
-                    self.tui.render_usage(event.data.get('usage'))
-                elif event.type == AgentEventType.AGENT_ERROR:
-                    console.print(f"[error]{event.data.get('error')}[/error]")
-                    return None
-                elif event.type == AgentEventType.TOOL_CALL_START:
-                    tool_name = event.data.get("name", "unknown")
-                    tool_kind = self._get_tool_kind(tool_name)
-                    self.tui.tool_call_start(
-                        event.data.get('call_id', ''),
-                        tool_name,
-                        tool_kind,
-                        event.data.get('arguments', {}),
-                    )
-                elif event.type  == AgentEventType.TOOL_CALL_COMPLETE:
-                    tool_name = event.data.get('name', 'unknown')
-                    tool_kind = self._get_tool_kind(tool_name)
-                    self.tui.tool_call_complete(
-                        event.data.get('call_id', ''),
-                        tool_name,
-                        tool_kind,
-                        event.data.get('success', False),
-                        event.data.get('output', ""),
-                        event.data.get('error'),
-                        event.data.get('metadata'),
-                        event.data.get('truncated', False),
-                        event.data.get('diff'),
-                        event.data.get('exit_code'),
-                    )
-        finally:
-            self.tui.stop_thinking()
-
-        return final_response
 
 class DefaultGroup(click.Group):
     """Group that falls back to the `run` command for unknown tokens.
@@ -165,11 +88,11 @@ def run(ctx: click.Context, prompt: str | None):
         sys.exit(1)
 
     if prompt:
-        result = asyncio.run(CLI(config).run_single(prompt))
+        result = asyncio.run(run_once(config, prompt))
         if result is None:
             sys.exit(1)
     else:
-        RelayApp(config).run()
+        asyncio.run(Repl(config).run())
 
 
 @main.command()

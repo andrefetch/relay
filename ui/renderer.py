@@ -1,3 +1,6 @@
+from prompt_toolkit.formatted_text import ANSI, StyleAndTextTuples, to_formatted_text
+from prompt_toolkit.key_binding import KeyBindings
+
 from rich.console import Console, ConsoleOptions, Group, RenderResult
 from rich.text import Text
 from rich.segment import Segment
@@ -7,6 +10,7 @@ from rich.syntax import Syntax
 
 from config.config import Config
 from ui.format import (
+    diff_stat,
     extract_read_code,
     format_elapsed,
     guess_language,
@@ -18,6 +22,8 @@ from ui.format import (
 from ui.theme import AGENT_THEME
 from utils.paths import display_path_relative_to_cwd
 from utils.text import truncate_text
+from collections import deque
+from io import StringIO
 from typing import Any, Callable
 import asyncio
 import random
@@ -30,6 +36,42 @@ GUTTER_CHAR = "│"
 
 MAX_BLOCK_TOKENS = 2400
 MAX_DIFF_TOKENS = 4000
+
+MAX_REMEMBERED_TOOLS = 20
+MAX_EXPANSION_LINES = 24
+
+EXPAND_KEY = "c-o"
+
+
+def build_key_bindings(tui: "TUI") -> KeyBindings:
+    """Prompt keybindings owned by the TUI.
+
+    ctrl+o toggles the last tool call's details. The expansion is rendered
+    as part of the prompt (see `TUI.expansion_fragments`) rather than
+    printed, so prompt_toolkit repaints it in place and toggling it off
+    genuinely removes it — nothing reaches scrollback, and the pending
+    input is never submitted.
+    """
+    bindings = KeyBindings()
+
+    @bindings.add(EXPAND_KEY)
+    def _(event) -> None:
+        tui.toggle_expansion()
+        event.app.invalidate()
+
+    return bindings
+
+KIND_ICONS = {
+    "read": "◇",
+    "write": "✎",
+    "shell": "❯",
+    "network": "⇅",
+    "memory": "◆",
+    "mcp": "⌬",
+    "git": "⎇",
+    "subagent": "◎",
+}
+DEFAULT_ICON = "●"
 
 THINKING_WORDS = [
     "Thinking…",
@@ -83,6 +125,14 @@ class TUI:
         self._assistant_stream_open = False
         self.tool_args_by_call_id: dict[str, dict[str, Any]] = {}
         self.tool_started_at: dict[str, float] = {}
+
+        # Tool detail blocks are hidden when printed; ctrl+o re-renders the
+        # most recent call's details into the prompt from this buffer.
+        self.collapsed = True
+        self.expanded = False
+        self._recent_tools: deque[tuple[Table, list[Any], list[Any], str]] = deque(
+            maxlen=MAX_REMEMBERED_TOOLS
+        )
 
         self._spinner_live: Live | None = None
         self._spinner_task: asyncio.Task | None = None
@@ -239,6 +289,62 @@ class TUI:
         header.add_row(left, status)
         return header
 
+    def _print_tool(self, header: Table, blocks: list[Any], border_style: str) -> None:
+        self.console.print()
+        self.console.print(header)
+        if blocks:
+            self.console.print(Gutter(Group(*blocks), style=border_style))
+
+    def toggle_details(self) -> None:
+        self.collapsed = not self.collapsed
+        state = "collapsed" if self.collapsed else "expanded"
+        self.console.print(Text(f"Tool output is now {state}.", style="muted"))
+
+    def show_recent_tool(self, back: int = 1) -> None:
+        """Replay a recent tool call with its detail blocks: 1 = most recent."""
+        if not self._recent_tools or back < 1 or back > len(self._recent_tools):
+            self.console.print(Text("Nothing to expand.", style="muted"))
+            return
+        header, summary, details, border_style = self._recent_tools[-back]
+        self._print_tool(header, summary + details, border_style)
+
+    def toggle_expansion(self) -> None:
+        self.expanded = not self.expanded
+
+    def expansion_fragments(self, back: int = 1) -> StyleAndTextTuples:
+        """The last tool call, rendered for display inside the prompt.
+
+        Rich paints to an ANSI buffer which prompt_toolkit re-parses into
+        fragments, so the block keeps its styling while living in the prompt
+        rather than in scrollback.
+        """
+        if not self.expanded or not self._recent_tools:
+            return []
+        if back < 1 or back > len(self._recent_tools):
+            return []
+
+        _header, _summary, details, border_style = self._recent_tools[-back]
+        if not details:
+            return []
+
+        buffer = StringIO()
+        console = Console(
+            theme=AGENT_THEME,
+            file=buffer,
+            force_terminal=True,
+            width=self.console.width,
+            highlight=False,
+        )
+        # Header and summary are already on screen from when the call ran;
+        # only the withheld details belong here.
+        console.print(Gutter(Group(*details), style=border_style))
+
+        lines = buffer.getvalue().rstrip("\n").split("\n")
+        if len(lines) > MAX_EXPANSION_LINES:
+            hidden = len(lines) - MAX_EXPANSION_LINES
+            lines = lines[:MAX_EXPANSION_LINES] + [f"… {hidden} more lines"]
+        return to_formatted_text(ANSI("\n".join(lines) + "\n"))
+
     def tool_call_start(
         self,
         call_id: str,
@@ -277,7 +383,6 @@ class TUI:
         self._stop_spinner()
 
         border_style = f"tool.{tool_kind}" if tool_kind else "tool"
-        status_style = "success" if success else "error"
         started_at = self.tool_started_at.pop(call_id, None)
         elapsed = (
             format_elapsed(time.monotonic() - started_at) if started_at is not None else None
@@ -285,34 +390,32 @@ class TUI:
         display_args = self.tool_args_by_call_id.pop(call_id, {})
         args = display_args
 
-        status = Text()
-        if not success:
-            status.append("failed", style=status_style)
-        if elapsed:
-            if status.plain:
-                status.append(" · ", style="muted")
-            status.append(elapsed, style="muted")
-
-        head = headline_of(display_args)
-        header = self._tool_header(
-            "✓" if success else "✖",
-            status_style,
-            name,
-            head[1] if head else None,
-            status,
-        )
-
         metadata = metadata or {}
         primary_path = None
         if isinstance(metadata.get("path"), str):
             primary_path = metadata["path"]
 
-        blocks: list[Any] = []
+        # summary is always printed; details only when expanded (or replayed
+        # via /expand). Failures ignore the collapse switch entirely.
+        summary: list[Any] = []
+        details: list[Any] = []
+
+        def output_block(style_name: str = "text") -> Syntax:
+            return Syntax(
+                truncate_text(output, self.config.model_name, MAX_BLOCK_TOKENS),
+                style_name,
+                theme="nord",
+                word_wrap=True,
+            )
+
+        def joined(parts: list[Any]) -> Text | None:
+            parts = [str(part) for part in parts if part is not None]
+            return Text(" ┈ ".join(parts), style="muted") if parts else None
 
         if not success:
-            blocks.append(Text(error or "Tool failed", style="error"))
+            summary.append(Text(error or "Tool failed", style="error"))
             if output.strip():
-                blocks.append(
+                details.append(
                     Text(truncate_text(output, "", MAX_BLOCK_TOKENS), style="muted")
                 )
 
@@ -324,10 +427,12 @@ class TUI:
             shown_end = metadata.get("shown_end")
             total_lines = metadata.get("total_lines")
             if shown_start and shown_end and total_lines:
-                blocks.append(
+                summary.append(
                     Text(f"lines {shown_start}–{shown_end} of {total_lines}", style="muted")
                 )
-            blocks.append(
+            else:
+                summary.append(Text(f"{len(code.splitlines())} lines", style="muted"))
+            details.append(
                 Syntax(
                     code,
                     guess_language(primary_path),
@@ -338,10 +443,13 @@ class TUI:
                 )
             )
 
-        elif name in {"write", "edit"} and success:
-            blocks.append(Text(output.strip() or "Completed", style="muted"))
+        elif name in {"write", "edit"}:
+            parts: list[Any] = [output.strip() or "Completed"]
             if diff:
-                blocks.append(
+                parts.append(diff_stat(diff))
+            summary.append(joined(parts))
+            if diff:
+                details.append(
                     Syntax(
                         truncate_text(diff, self.config.model_name, MAX_DIFF_TOKENS),
                         "diff",
@@ -349,208 +457,144 @@ class TUI:
                         word_wrap=True,
                     )
                 )
-        
-        elif name == 'shell' and success:
-            command = args.get('command')
+
+        elif name == "shell":
+            line = joined(
+                [
+                    f"exit {exit_code}" if exit_code is not None else None,
+                    f"{len(output.splitlines())} lines",
+                ]
+            )
+            summary.append(line)
+            command = args.get("command")
             if isinstance(command, str) and command.strip():
-                blocks.append(Text(f'$ {command.strip()}', style='muted'))
-            
-            if exit_code is not None:
-                blocks.append(Text(
-                    f'exit_code={exit_code}', style='muted'
-                ))
-            
-            output_display = truncate_text(
-                output, 
-                self.config.model_name,
-                MAX_BLOCK_TOKENS,
-            )
-            blocks.append(
-                Syntax(
-                    output_display,
-                    "text",
-                    theme="nord",
-                    word_wrap=True,
-                    )
-            )
+                details.append(Text(f"$ {command.strip()}", style="muted"))
+            details.append(output_block())
 
-        elif name == 'list_dir' and success:
-
-            entries = metadata.get('entries')
-            path = metadata.get('path')
-            summary = []
-
-            if isinstance(path, str):
-                summary.append(path)
-
-            if isinstance(entries, int):
-                summary.append(f"{entries} entries")
-            
-            if summary:
-                blocks.append(Text(' ┈ '.join(summary), style='muted'))
-            
-            output_display = truncate_text(
-                output, 
-                self.config.model_name, 
-                MAX_BLOCK_TOKENS
-            )
-
-            blocks.append(
-                Syntax(
-                    output_display,
-                    "text",
-                    theme="nord",
-                    word_wrap=True,
-                    )
-            )
-        
-        elif name == 'grep' and success:
-
-            matches = metadata.get('matches')
-            files_searched = metadata.get('files_searched')
-
-            summary = []
-
-            if isinstance(matches, int):
-                summary.append(f"{matches} matches")
-            if isinstance(files_searched, int):
-                summary.append(f"searched {files_searched} files")
-            
-            if summary:
-                blocks.append(Text(" ┈ ".join(summary), style='muted'))
-            
-            output_display = truncate_text(output, self.config.model_name, MAX_BLOCK_TOKENS)
-            blocks.append(
-                Syntax(
-                    output_display,
-                    "text",
-                    theme="nord",
-                    word_wrap=True,
-                    )
-            )
-        
-        elif name == 'glob' and success:
-
-            matches = metadata.get('matches')
-
-            if isinstance(matches, int):
-                blocks.append(Text(f"{matches} matches", style='muted'))
-            
-            output_display = truncate_text(output, self.config.model_name, MAX_BLOCK_TOKENS)
-            blocks.append(
-                Syntax(
-                    output_display,
-                    "text",
-                    theme="nord",
-                    word_wrap=True,
-                    )
-            )
-
-        elif name == 'search' and success:
-
-            results = metadata.get('results')
-            query = args.get('query')
-
-            summary = []
-
-            if isinstance(query, str):
-                summary.append(
-                    query
+        elif name == "list_dir":
+            summary.append(
+                joined(
+                    [
+                        metadata.get("path") if isinstance(metadata.get("path"), str) else None,
+                        f"{metadata['entries']} entries"
+                        if isinstance(metadata.get("entries"), int)
+                        else None,
+                    ]
                 )
-            if isinstance(results, int):
-                summary.append(
-                    f'{results} results'
-                )
-            
-            blocks.append(Text(" ┈ ".join(summary), style='muted'))
-            
-            output_display = truncate_text(output, self.config.model_name, MAX_BLOCK_TOKENS)
-            blocks.append(
-                Syntax(
-                    output_display,
-                    "text",
-                    theme="nord",
-                    word_wrap=True,
-                    )
             )
-        
-        elif name == 'fetch' and success:
+            details.append(output_block())
 
-            status_code = metadata.get('status_code')
-            content_length = metadata.get('content_length')
-            url = args.get('url')
-
-            summary = []
-
-            if isinstance(status_code, int):
-                summary.append(
-                    status_code
+        elif name == "grep":
+            summary.append(
+                joined(
+                    [
+                        f"{metadata['matches']} matches"
+                        if isinstance(metadata.get("matches"), int)
+                        else None,
+                        f"searched {metadata['files_searched']} files"
+                        if isinstance(metadata.get("files_searched"), int)
+                        else None,
+                    ]
                 )
-            if isinstance(content_length, int):
-                summary.append(
-                    f'{content_length} bytes'
-                )
-            if isinstance(url, str):
-                summary.append(
-                    url
-                )
-            
-            if summary:
-                blocks.append(Text(" ┈ ".join(str(summary)), style='muted'))
-            
-            output_display = truncate_text(output, self.config.model_name, MAX_BLOCK_TOKENS)
-            blocks.append(
-                Syntax(
-                    output_display,
-                    "text",
-                    theme="nord",
-                    word_wrap=True,
-                    )
             )
-            
-        elif name == 'plan' and success:
+            details.append(output_block())
 
-            completed = metadata.get('completed')
-            total = metadata.get('total')
+        elif name == "glob":
+            if isinstance(metadata.get("matches"), int):
+                summary.append(Text(f"{metadata['matches']} matches", style="muted"))
+            details.append(output_block())
 
+        elif name == "search":
+            summary.append(
+                joined(
+                    [
+                        args.get("query") if isinstance(args.get("query"), str) else None,
+                        f"{metadata['results']} results"
+                        if isinstance(metadata.get("results"), int)
+                        else None,
+                    ]
+                )
+            )
+            details.append(output_block())
+
+        elif name == "fetch":
+            summary.append(
+                joined(
+                    [
+                        metadata.get("status_code")
+                        if isinstance(metadata.get("status_code"), int)
+                        else None,
+                        f"{metadata['content_length']} bytes"
+                        if isinstance(metadata.get("content_length"), int)
+                        else None,
+                        args.get("url") if isinstance(args.get("url"), str) else None,
+                    ]
+                )
+            )
+            details.append(output_block())
+
+        elif name == "plan":
+            completed = metadata.get("completed")
+            total = metadata.get("total")
             if isinstance(completed, int) and isinstance(total, int) and total:
-                blocks.append(Text(f"{completed}/{total} completed", style='muted'))
+                summary.append(Text(f"{completed}/{total} completed", style="muted"))
+            # The plan is the point: keep the checklist visible even collapsed.
+            summary.append(self._render_todos(metadata))
 
-            blocks.append(self._render_todos(metadata))
-
-        elif name == 'memory' and success:
-
-            action = metadata.get('action')
-            count = metadata.get('count')
-
-            summary = []
-            if isinstance(action, str):
-                summary.append(action)
-            if isinstance(count, int):
-                summary.append(f"{count} stored")
-
-            if summary:
-                blocks.append(Text(" ┈ ".join(summary), style='muted'))
-
-            blocks.append(self._render_memory(metadata))
+        elif name == "memory":
+            summary.append(
+                joined(
+                    [
+                        metadata.get("action") if isinstance(metadata.get("action"), str) else None,
+                        f"{metadata['count']} stored"
+                        if isinstance(metadata.get("count"), int)
+                        else None,
+                    ]
+                )
+            )
+            summary.append(self._render_memory(metadata))
 
         elif output.strip():
-            blocks.append(
+            first_line = output.strip().splitlines()[0]
+            summary.append(Text(first_line, style="muted"))
+            details.append(
                 Text(truncate_text(output, "", MAX_BLOCK_TOKENS), style="code")
             )
 
-        if not blocks:
-            blocks.append(Text("(no output)", style="muted"))
+        summary = [block for block in summary if block is not None]
+        if not summary and not details:
+            summary.append(Text("(no output)", style="muted"))
         if truncated:
-            blocks.append(Text("Tool output was truncated", style="warning"))
+            summary.append(Text("Tool output was truncated", style="warning"))
 
+        head = headline_of(display_args)
         secondary = secondary_args(display_args, head[0] if head else None)
         if secondary and name not in {"plan", "memory"}:
-            blocks.insert(0, self._render_args_table(name, secondary))
+            details.insert(0, self._render_args_table(name, secondary))
 
-        self.console.print()
-        self.console.print(header)
-        self.console.print(Gutter(Group(*blocks), style=border_style))
+        collapsed = self.collapsed and success
+        hidden = collapsed and bool(details)
+
+        status = Text()
+        status.append("✓" if success else "✖ failed", style="success" if success else "error")
+        if elapsed:
+            status.append(" ")
+            status.append(elapsed, style="muted")
+        if hidden:
+            hidden_lines = len((diff or output).splitlines())
+            status.append(" · ", style="dim")
+            status.append(f"+{hidden_lines} lines", style="dim")
+
+        header = self._tool_header(
+            KIND_ICONS.get(tool_kind or "", DEFAULT_ICON),
+            border_style,
+            name,
+            head[1] if head else None,
+            status,
+        )
+
+        self._recent_tools.append((header, summary, details, border_style))
+        self._print_tool(header, summary if collapsed else summary + details, border_style)
 
 
     def render_usage(self, usage: dict[str, Any] | None) -> None:

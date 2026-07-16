@@ -61,6 +61,9 @@ class ContextManager:
 
         self._messages.append(item)
     
+    def clear(self) -> None:
+        self._messages.clear()
+
     def get_messages(self) -> list[dict[str, Any]]:
         messages = []
 

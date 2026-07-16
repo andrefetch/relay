@@ -55,6 +55,11 @@ class MCPClient:
 
             await self._client.__aenter__()
 
+            tools = self._client.list_tools()
+            for tool in tools:
+                pass
+
+
         except Exception as e:
             self.status = MCPServerStatus.ERROR
             print(f"Error: {e}")

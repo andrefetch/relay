@@ -35,18 +35,18 @@ AGENT_THEME = Theme(
         "tool.network": PALETTE["teal"],
         "tool.memory": PALETTE["violet"],
         "tool.mcp": PALETTE["violet"],
+        "tool.git": PALETTE["accent"],
+        "tool.subagent": PALETTE["sand"],
 
         "code": PALETTE["silver"],
     }
 )
 
 
-def _css_rgb(value: str) -> str:
-    return value
-
-
-def textual_variables() -> dict[str, str]:
-    return {f"relay-{name}": _css_rgb(value) for name, value in PALETTE.items()}
+def hex_colour(name: str) -> str:
+    """`rgb(r,g,b)` from PALETTE as `#rrggbb`, for consumers that need hex."""
+    r, g, b = (int(part) for part in PALETTE[name][4:-1].split(","))
+    return f"#{r:02x}{g:02x}{b:02x}"
 
 
 def tool_colour(tool_kind: str | None) -> str:
@@ -57,5 +57,6 @@ def tool_colour(tool_kind: str | None) -> str:
         "network": PALETTE["teal"],
         "memory": PALETTE["violet"],
         "mcp": PALETTE["violet"],
+        "git": PALETTE["accent"],
         "subagent": PALETTE["sand"],
     }.get(tool_kind or "", PALETTE["accent"])
