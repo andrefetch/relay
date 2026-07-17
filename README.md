@@ -9,8 +9,7 @@ An open-sourced AI coding agent, a terminal-based assistant that can read your c
 > [!WARNING]
 > **Work in progress.** The agent loop, tool calling, and terminal UI work end to end, but there is **no approval flow yet**. The interactive TUI auto-approves every tool, so Relay can change files and run commands without asking, use it in a directory you don't mind it touching.
 
-
-## Getting started
+## Getting started!
 
 ```bash
 # 1. Install Relay
