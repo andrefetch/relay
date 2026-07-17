@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/logo.png" alt="Relay" width="100%" />
+  <img src="comingsoon" alt="Relay" width="100%" />
 </p>
 
 # Relay
