@@ -59,12 +59,6 @@ def build_key_bindings(tui: "TUI") -> KeyBindings:
     def _(event) -> None:
         tui.toggle_expansion()
 
-        # prompt_toolkit's renderer only ever grows the height it reserves
-        # (`height = max(last_height, …)`), so collapsing would otherwise
-        # leave the box stretched to whatever the expansion needed, with the
-        # bottom edge stranded at the foot of the screen. Erasing forgets the
-        # remembered screen so the next render sizes itself from scratch;
-        # this is the same dance run_in_terminal does.
         app = event.app
         app.renderer.erase()
         app.renderer.reset()
@@ -73,8 +67,6 @@ def build_key_bindings(tui: "TUI") -> KeyBindings:
 
     return bindings
 
-# One mark for every tool: the kind is already carried by the colour, and a
-# steady glyph keeps a column of calls reading as one list.
 TOOL_ICON = "◇"
 
 THINKING_WORDS = [
@@ -130,8 +122,6 @@ class TUI:
         self.tool_args_by_call_id: dict[str, dict[str, Any]] = {}
         self.tool_started_at: dict[str, float] = {}
 
-        # Tool detail blocks are hidden when printed; ctrl+o re-renders the
-        # most recent call's details into the prompt from this buffer.
         self.collapsed = True
         self.expanded = False
         self._recent_tools: deque[tuple[Table, list[Any], list[Any], str]] = deque(
@@ -423,8 +413,6 @@ class TUI:
         if isinstance(metadata.get("path"), str):
             primary_path = metadata["path"]
 
-        # summary is always printed; details only when expanded (or replayed
-        # via /expand). Failures ignore the collapse switch entirely.
         summary: list[Any] = []
         details: list[Any] = []
 
@@ -477,8 +465,6 @@ class TUI:
                 parts.append(diff_stat(diff))
             summary.append(joined(parts))
             if diff:
-                # A peek at what actually landed, so a collapsed edit still
-                # says something about the change and not just its size.
                 glimpse = diff_glimpse(diff)
                 if glimpse:
                     summary.append(
@@ -579,7 +565,6 @@ class TUI:
             total = metadata.get("total")
             if isinstance(completed, int) and isinstance(total, int) and total:
                 summary.append(Text(f"{completed}/{total} completed", style="muted"))
-            # The plan is the point: keep the checklist visible even collapsed.
             summary.append(self._render_todos(metadata))
 
         elif name == "memory":

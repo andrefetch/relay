@@ -19,7 +19,6 @@ async def stream_turn(tui: TUI, agent: Agent, message: str) -> str | None:
     final_response: str | None = None
     streaming = False
     failed = False
-    # One word per turn: re-rolling it after every tool call reads as noise.
     label = random_thinking_text()
 
     try:
@@ -62,7 +61,6 @@ async def stream_turn(tui: TUI, agent: Agent, message: str) -> str | None:
                     event.data.get("diff"),
                     event.data.get("exit_code"),
                 )
-                # The model is back in control until it speaks or calls again.
                 tui.start_thinking(label)
 
             elif event.type == AgentEventType.AGENT_END:

@@ -32,33 +32,20 @@ HISTORY_FILE = "history"
 
 PROMPT_MARK = "❯"
 
-# Width of "│ <mark> ", and of the "│   " continuation that lines up under
-# it. Derived, so changing the mark keeps the wrap and continuation honest.
 PROMPT_WIDTH = len("│ ") + len(PROMPT_MARK) + len(" ")
 
 WELCOME_TITLE = "Welcome to relay!"
-WELCOME_HINT = "Send /help for help information."
 
-# Panel is borders + padding + logo + gap + the widest welcome line. Below
-# this the logo is dropped rather than letting the panel wrap.
-BANNER_MIN_WIDTH = 2 + 2 + LOGO_WIDTH + 2 + len(WELCOME_HINT)
+BANNER_MIN_WIDTH = 2 + 2 + LOGO_WIDTH + 2 + len(WELCOME_TITLE)
 
 PROMPT_STYLE = Style.from_dict(
     {
         "prompt": f"{hex_colour('accent')} bold",
         "frame": hex_colour("slate"),
-        # The bottom edge rides in the toolbar slot, which defaults to
-        # reverse video; noreverse makes it read as a plain border.
         "bottom-toolbar": f"noreverse {hex_colour('slate')}",
         "bottom-toolbar.text": f"noreverse {hex_colour('slate')}",
     }
 )
-
-COMMANDS = {
-    "/help": "Show this help",
-    "/clear": "Clear the screen and start a fresh conversation",
-    "/exit": "Quit relay",
-}
 
 
 def _soft_wrap(text: str, width: int) -> str:
@@ -126,10 +113,6 @@ class Repl:
         self._reflowing = False
         self.session.default_buffer.on_text_changed += self._reflow
 
-        # The input window is flexible by default, so it swallows every row
-        # between the cursor and the bottom of the terminal and strands the
-        # bottom edge down there. Pinning it to its content keeps the box
-        # wrapped tight around what is actually typed.
         window = self.session.app.layout.current_window
         window.dont_extend_height = to_filter(True)
 
@@ -145,8 +128,6 @@ class Repl:
         if wrapped == buffer.text:
             return
 
-        # Only spaces moved, so the cursor index still points at the same
-        # character and can be carried straight over.
         self._reflowing = True
         try:
             buffer.document = Document(wrapped, buffer.cursor_position)
@@ -168,7 +149,6 @@ class Repl:
     def _banner(self, agent: Agent | None = None) -> None:
         welcome = Table.grid(padding=(0, 0))
         welcome.add_row(Text(WELCOME_TITLE, style="highlight"))
-        welcome.add_row(Text(WELCOME_HINT, style="muted"))
 
         head = Table.grid(padding=(0, 2))
         head.add_column(vertical="middle")
@@ -196,45 +176,15 @@ class Repl:
         self.console.print()
         self.console.print(
             Text(
-                "/help for commands · ctrl+o expands tool output · "
-                "ctrl+c interrupts · ctrl+d quits",
+                "ctrl+o expands tool output · ctrl+c interrupts · ctrl+d quits",
                 style="border",
             )
         )
 
-    def _help(self) -> None:
-        self.console.print()
-        for name, description in COMMANDS.items():
-            self.console.print(
-                Text.assemble((f"  {name:<8}", "info"), (description, "muted"))
-            )
-
-    def _clear(self, agent: Agent) -> None:
-        self.console.clear()
-        agent.session.context_manager.clear()
-        self._reset_plan(agent)
-        self._banner(agent)
-
     def _reset_plan(self, agent: Agent) -> None:
-        # A new prompt starts a fresh plan, so stale todos never linger next
-        # to unrelated work.
         tool = agent.session.tool_registery.get("plan")
         if tool is not None and hasattr(tool, "reset"):
             tool.reset()
-
-    def _handle_command(self, command: str, agent: Agent) -> bool:
-        """Run a slash command. Returns False when the REPL should exit."""
-        if command in {"/exit", "/quit"}:
-            return False
-        if command == "/help":
-            self._help()
-        elif command == "/clear":
-            self._clear(agent)
-        else:
-            self.console.print(
-                f"[warning]Unknown command: {command}[/warning] — try /help"
-            )
-        return True
 
     @contextmanager
     def _turn_keys(self, task: asyncio.Task):
@@ -247,7 +197,6 @@ class Repl:
         try:
             device = create_input()
         except Exception:
-            # No usable tty (piped input, odd terminal): fall back to SIGINT.
             loop = asyncio.get_running_loop()
             try:
                 loop.add_signal_handler(signal.SIGINT, task.cancel)
@@ -306,14 +255,9 @@ class Repl:
     def _continuation_fragments(
         self, width: int, _line_number: int, _wrap_count: int
     ) -> StyleAndTextTuples:
-        # Without this, wrapped input starts at column 0 and breaks straight
-        # through the left border. `width` is the prompt width, so the edge
-        # plus padding keeps continuation lines aligned under the first one.
         return [("class:frame", "│"), ("", " " * (width - 1))]
 
     def _bottom_fragments(self) -> StyleAndTextTuples:
-        # Drawn by prompt_toolkit below the input so the box is closed the
-        # whole time you are typing, not only once the line is submitted.
         return [("class:frame", "╰" + "─" * (self.console.width - 2) + "╯")]
 
     async def _read_input(self) -> str:
@@ -324,14 +268,9 @@ class Repl:
                 bottom_toolbar=self._bottom_fragments,
                 prompt_continuation=self._continuation_fragments,
             )
-            # The newlines are ours, from wrapping; the user typed spaces.
             return message.replace("\n", " ")
         finally:
-            # Fold the details away so they never freeze into scrollback.
             self.tui.expanded = False
-            # The toolbar edge is erased once the prompt is done, so the
-            # submitted line needs its own bottom to stay boxed in the
-            # transcript.
             self._box_bottom()
 
     async def run(self) -> None:
@@ -347,11 +286,6 @@ class Repl:
 
                 message = message.strip()
                 if not message:
-                    continue
-
-                if message.startswith("/"):
-                    if not self._handle_command(message, agent):
-                        break
                     continue
 
                 self._reset_plan(agent)

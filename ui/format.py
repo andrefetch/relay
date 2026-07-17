@@ -159,7 +159,6 @@ def diff_glimpse(diff: str, max_lines: int = 3) -> str:
     if not chosen:
         return ""
 
-    # Strip the shared indent so a deeply nested hunk still reads.
     common = min((len(l) - len(l.lstrip()) for l in chosen), default=0)
     return "\n".join(line[common:] for line in chosen)
 

@@ -4,9 +4,6 @@ from ui.theme import PALETTE
 
 RELAY_VERSION = "0.0.1 (dev-build)"
 
-# The cloud as a pixel grid. Each pixel is drawn two cells wide so it comes
-# out square against the terminal's roughly 1:2 cell, which keeps the steps
-# reading as blocks rather than tall slivers.
 CLOUD_PIXELS = (
     "..###...",
     ".######.",
