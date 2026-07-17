@@ -1,8 +1,10 @@
 from enum import Enum
 import os
 from pathlib import Path
+from typing import Any
 from fastmcp import Client
 from fastmcp.client.transports import SSETransport, StdioTransport
+from dataclasses import dataclass, field
 
 from config.config import MCPServerConfig
 
@@ -12,6 +14,16 @@ class MCPServerStatus(str, Enum):
     CONNECTING = 'connecting'
     CONNECTED = 'connected'
     ERROR = 'error'
+
+@dataclass
+class MCPToolInfo:
+
+    name: str
+    description: str
+    input_schmea: dict[str, Any] = field(
+        default_factory=dict
+    )
+    server_name: str = ""
 
 class MCPClient:
     def __init__(
@@ -26,6 +38,8 @@ class MCPClient:
         self.cwd = cwd
         self.status = MCPServerStatus.DISCONNECTED
         self._client = Client | None = None
+
+        self._tools: dict[str, MCPToolInfo] = dict()
     
     def _create_transport(self) -> StdioTransport | SSETransport:
 
@@ -57,9 +71,29 @@ class MCPClient:
 
             tools = self._client.list_tools()
             for tool in tools:
-                pass
-
+                self._tools[tool.name] = MCPToolInfo(
+                    name=tool.name,
+                    description=tool.description or "",
+                    input_schmea=tool.inputSchema if hasattr(tool, "inputSchema") else {},
+                    server_name=self.name
+                )
+            
+            self.status = MCPServerStatus.CONNECTED
 
         except Exception as e:
             self.status = MCPServerStatus.ERROR
             print(f"Error: {e}")
+    
+    async def disconnect(self) -> None:
+
+        if self._client:
+            await self._client.__aexit__(
+                None,
+                None,
+                None,
+            )
+
+            self._client = None
+        
+        self._tools.clear()
+        self.status = MCPServerStatus.DISCONNECTED
