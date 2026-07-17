@@ -58,7 +58,18 @@ def build_key_bindings(tui: "TUI") -> KeyBindings:
     @bindings.add(EXPAND_KEY)
     def _(event) -> None:
         tui.toggle_expansion()
-        event.app.invalidate()
+
+        # prompt_toolkit's renderer only ever grows the height it reserves
+        # (`height = max(last_height, …)`), so collapsing would otherwise
+        # leave the box stretched to whatever the expansion needed, with the
+        # bottom edge stranded at the foot of the screen. Erasing forgets the
+        # remembered screen so the next render sizes itself from scratch;
+        # this is the same dance run_in_terminal does.
+        app = event.app
+        app.renderer.erase()
+        app.renderer.reset()
+        app._request_absolute_cursor_position()
+        app._redraw()
 
     return bindings
 

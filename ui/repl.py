@@ -10,6 +10,7 @@ from platformdirs import user_config_dir
 from prompt_toolkit import PromptSession
 from prompt_toolkit.buffer import Buffer
 from prompt_toolkit.document import Document
+from prompt_toolkit.filters import to_filter
 from prompt_toolkit.formatted_text import StyleAndTextTuples
 from prompt_toolkit.history import FileHistory
 from prompt_toolkit.input import create_input
@@ -29,8 +30,11 @@ from ui.theme import hex_colour
 
 HISTORY_FILE = "history"
 
-# Width of "│ ❯ " and of the "│   " continuation that lines up under it.
-PROMPT_WIDTH = 4
+PROMPT_MARK = "❯"
+
+# Width of "│ <mark> ", and of the "│   " continuation that lines up under
+# it. Derived, so changing the mark keeps the wrap and continuation honest.
+PROMPT_WIDTH = len("│ ") + len(PROMPT_MARK) + len(" ")
 
 WELCOME_TITLE = "Welcome to relay!"
 WELCOME_HINT = "Send /help for help information."
@@ -121,6 +125,13 @@ class Repl:
         )
         self._reflowing = False
         self.session.default_buffer.on_text_changed += self._reflow
+
+        # The input window is flexible by default, so it swallows every row
+        # between the cursor and the bottom of the terminal and strands the
+        # bottom edge down there. Pinning it to its content keeps the box
+        # wrapped tight around what is actually typed.
+        window = self.session.app.layout.current_window
+        window.dont_extend_height = to_filter(True)
 
     def _reflow(self, buffer: Buffer) -> None:
         """Re-wrap the input at word boundaries as it is typed."""
@@ -289,7 +300,7 @@ class Repl:
             *self.tui.expansion_fragments(),
             ("class:frame", top),
             ("class:frame", "│ "),
-            ("class:prompt", "❯ "),
+            ("class:prompt", f"{PROMPT_MARK} "),
         ]
 
     def _continuation_fragments(
