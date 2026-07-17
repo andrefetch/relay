@@ -2,7 +2,7 @@ from rich.text import Text
 
 from ui.theme import PALETTE
 
-RELAY_VERSION = "0.2"
+RELAY_VERSION = "0.0.1 (dev-build)"
 
 RELAY_BLOB = (
     r"   -=-   ",

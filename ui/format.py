@@ -135,6 +135,35 @@ def extract_read_code(text: str) -> tuple[int, str] | None:
     return start_line, "\n".join(code_lines)
 
 
+def diff_glimpse(diff: str, max_lines: int = 3) -> str:
+    """The first few added lines of a diff, for a peek at what landed.
+
+    Falls back to removed lines so a pure deletion still shows something.
+    """
+    added: list[str] = []
+    removed: list[str] = []
+
+    for line in diff.splitlines():
+        if line.startswith("+") and not line.startswith("+++"):
+            body = line[1:]
+            if body.strip():
+                added.append(body)
+        elif line.startswith("-") and not line.startswith("---"):
+            body = line[1:]
+            if body.strip():
+                removed.append(body)
+        if len(added) >= max_lines:
+            break
+
+    chosen = added or removed[:max_lines]
+    if not chosen:
+        return ""
+
+    # Strip the shared indent so a deeply nested hunk still reads.
+    common = min((len(l) - len(l.lstrip()) for l in chosen), default=0)
+    return "\n".join(line[common:] for line in chosen)
+
+
 def diff_stat(diff: str) -> str:
     added = removed = 0
     for line in diff.splitlines():

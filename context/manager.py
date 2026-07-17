@@ -4,6 +4,14 @@ from dataclasses import dataclass, field
 from utils.text import count_tokens
 from typing import Any
 
+# A tool result must always carry content on the wire. Empty output is
+# common (a shell command that printed nothing, a grep with no matches), so
+# it gets a stand-in rather than an empty string: strict providers reject a
+# tool message with no content, and models read "" poorly even where it is
+# accepted.
+EMPTY_TOOL_OUTPUT = "(no output)"
+
+
 @dataclass
 class MessageItem:
     role: str
@@ -23,9 +31,11 @@ class MessageItem:
         if self.tool_calls:
             result['tool_calls'] = self.tool_calls
 
-        if self.content:
+        if self.role == 'tool':
+            result['content'] = self.content or EMPTY_TOOL_OUTPUT
+        elif self.content:
             result['content'] = self.content
-        
+
         return result
 
 class ContextManager:

@@ -10,6 +10,7 @@ from rich.syntax import Syntax
 
 from config.config import Config
 from ui.format import (
+    diff_glimpse,
     diff_stat,
     extract_read_code,
     format_elapsed,
@@ -61,17 +62,9 @@ def build_key_bindings(tui: "TUI") -> KeyBindings:
 
     return bindings
 
-KIND_ICONS = {
-    "read": "◇",
-    "write": "✎",
-    "shell": "❯",
-    "network": "⇅",
-    "memory": "◆",
-    "mcp": "⌬",
-    "git": "⎇",
-    "subagent": "◎",
-}
-DEFAULT_ICON = "●"
+# One mark for every tool: the kind is already carried by the colour, and a
+# steady glyph keeps a column of calls reading as one list.
+TOOL_ICON = "◇"
 
 THINKING_WORDS = [
     "Thinking…",
@@ -136,7 +129,7 @@ class TUI:
 
         self._spinner_live: Live | None = None
         self._spinner_task: asyncio.Task | None = None
-        self._spinner_render: Callable[[], Text] | None = None
+        self._spinner_render: Callable[[], Any] | None = None
         self._spinner_frame = 0
         self._thinking_label = ""
 
@@ -154,7 +147,7 @@ class TUI:
         except asyncio.CancelledError:
             pass
 
-    def _start_spinner(self, render: Callable[[], Text]) -> None:
+    def _start_spinner(self, render: Callable[[], Any]) -> None:
         self._stop_spinner()
         self._spinner_frame = 0
         self._spinner_render = render
@@ -176,10 +169,24 @@ class TUI:
             self._spinner_live = None
         self._spinner_render = None
 
-    def _thinking_renderable(self) -> Text:
-        return Text.assemble(
-            (f"{self._spinner_char()} ", "muted"), (self._thinking_label, "muted")
+    def _live_group(self, line: Text) -> Any:
+        """A live line, with the expanded tool details above it if toggled.
+
+        The spinner's Live region is the only thing we own while a turn is
+        running, so ctrl+o folds the details in here — same as the prompt
+        does between turns. A leading blank keeps the line off the heels of
+        whatever printed last.
+        """
+        expansion = self.expansion_renderable()
+        if expansion is not None:
+            return Group(Text(""), expansion, line)
+        return Group(Text(""), line)
+
+    def _thinking_renderable(self) -> Any:
+        line = Text.assemble(
+            (f"{self._spinner_char()} ", "tool"), (self._thinking_label, "highlight")
         )
+        return self._live_group(line)
 
     def start_thinking(self, label: str | None = None) -> None:
         self._thinking_label = label if label is not None else random_thinking_text()
@@ -311,20 +318,31 @@ class TUI:
     def toggle_expansion(self) -> None:
         self.expanded = not self.expanded
 
-    def expansion_fragments(self, back: int = 1) -> StyleAndTextTuples:
-        """The last tool call, rendered for display inside the prompt.
+    def expansion_renderable(self, back: int = 1) -> Any | None:
+        """The withheld details of a recent tool call, or None.
 
-        Rich paints to an ANSI buffer which prompt_toolkit re-parses into
-        fragments, so the block keeps its styling while living in the prompt
-        rather than in scrollback.
+        Header and summary are already on screen from when the call ran, so
+        only the hidden part belongs here.
         """
         if not self.expanded or not self._recent_tools:
-            return []
+            return None
         if back < 1 or back > len(self._recent_tools):
-            return []
+            return None
 
         _header, _summary, details, border_style = self._recent_tools[-back]
         if not details:
+            return None
+        return Gutter(Group(*details), style=border_style)
+
+    def expansion_fragments(self, back: int = 1) -> StyleAndTextTuples:
+        """`expansion_renderable` as prompt_toolkit fragments.
+
+        Rich paints to an ANSI buffer which prompt_toolkit re-parses, so the
+        block keeps its styling while living in the prompt rather than in
+        scrollback.
+        """
+        renderable = self.expansion_renderable(back)
+        if renderable is None:
             return []
 
         buffer = StringIO()
@@ -335,9 +353,7 @@ class TUI:
             width=self.console.width,
             highlight=False,
         )
-        # Header and summary are already on screen from when the call ran;
-        # only the withheld details belong here.
-        console.print(Gutter(Group(*details), style=border_style))
+        console.print(renderable)
 
         lines = buffer.getvalue().rstrip("\n").split("\n")
         if len(lines) > MAX_EXPANSION_LINES:
@@ -357,14 +373,15 @@ class TUI:
         self.tool_started_at[call_id] = time.monotonic()
         head = headline_of(display_args)
 
-        def render() -> Text:
-            line = Text.assemble((f"{self._spinner_char()} ", "muted"), (name, "tool"))
+        def render() -> Any:
+            line = Text.assemble(
+                (f"{self._spinner_char()} ", "tool"), (name, "highlight")
+            )
             if head:
                 line.append("  ")
-                line.append(head[1], style="muted")
-            return line
+                line.append(head[1], style="subtitle")
+            return self._live_group(line)
 
-        self.console.print()
         self._start_spinner(render)
 
     def tool_call_complete(
@@ -449,6 +466,19 @@ class TUI:
                 parts.append(diff_stat(diff))
             summary.append(joined(parts))
             if diff:
+                # A peek at what actually landed, so a collapsed edit still
+                # says something about the change and not just its size.
+                glimpse = diff_glimpse(diff)
+                if glimpse:
+                    summary.append(
+                        Syntax(
+                            glimpse,
+                            guess_language(primary_path or args.get("path")),
+                            theme="nord",
+                            word_wrap=False,
+                            background_color="default",
+                        )
+                    )
                 details.append(
                     Syntax(
                         truncate_text(diff, self.config.model_name, MAX_DIFF_TOKENS),
@@ -586,7 +616,7 @@ class TUI:
             status.append(f"+{hidden_lines} lines", style="dim")
 
         header = self._tool_header(
-            KIND_ICONS.get(tool_kind or "", DEFAULT_ICON),
+            TOOL_ICON,
             border_style,
             name,
             head[1] if head else None,

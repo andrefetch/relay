@@ -3,12 +3,17 @@ from __future__ import annotations
 import asyncio
 import signal
 
+from contextlib import contextmanager
 from pathlib import Path
 
 from platformdirs import user_config_dir
 from prompt_toolkit import PromptSession
+from prompt_toolkit.buffer import Buffer
+from prompt_toolkit.document import Document
 from prompt_toolkit.formatted_text import StyleAndTextTuples
 from prompt_toolkit.history import FileHistory
+from prompt_toolkit.input import create_input
+from prompt_toolkit.keys import Keys
 from prompt_toolkit.styles import Style
 from rich.box import ROUNDED
 from rich.panel import Panel
@@ -23,6 +28,9 @@ from ui.stream import stream_turn
 from ui.theme import hex_colour
 
 HISTORY_FILE = "history"
+
+# Width of "│ ❯ " and of the "│   " continuation that lines up under it.
+PROMPT_WIDTH = 4
 
 WELCOME_TITLE = "Welcome to relay!"
 WELCOME_HINT = "Send /help for help information."
@@ -47,6 +55,40 @@ COMMANDS = {
     "/clear": "Clear the screen and start a fresh conversation",
     "/exit": "Quit relay",
 }
+
+
+def _soft_wrap(text: str, width: int) -> str:
+    """Break `text` onto lines of at most `width`, at word boundaries.
+
+    prompt_toolkit only wraps mid-character, and the break is decided deep
+    inside `Window._copy_body` with no hook. Real newlines in the buffer do
+    render as their own line though, so the wrap is done here instead.
+
+    Only spaces turn into newlines (and back), never anything else, so every
+    character keeps its index and the cursor can be carried across a reflow
+    untouched. A word longer than `width` has no space to break on and is
+    left for prompt_toolkit to wrap the old way.
+    """
+    if width < 1:
+        return text
+
+    chars = list(text)
+    line_start = 0
+    last_space = -1
+    i = 0
+
+    while i < len(chars):
+        if chars[i] == " ":
+            last_space = i
+        if i - line_start + 1 > width and last_space > line_start:
+            chars[last_space] = "\n"
+            line_start = last_space + 1
+            last_space = -1
+            i = line_start
+            continue
+        i += 1
+
+    return "".join(chars)
 
 
 def _tilde(path: str) -> str:
@@ -77,6 +119,28 @@ class Repl:
             style=PROMPT_STYLE,
             key_bindings=build_key_bindings(self.tui),
         )
+        self._reflowing = False
+        self.session.default_buffer.on_text_changed += self._reflow
+
+    def _reflow(self, buffer: Buffer) -> None:
+        """Re-wrap the input at word boundaries as it is typed."""
+        if self._reflowing:
+            return
+        width = self.console.width - PROMPT_WIDTH
+        if width < 16:
+            return
+
+        wrapped = _soft_wrap(buffer.text.replace("\n", " "), width)
+        if wrapped == buffer.text:
+            return
+
+        # Only spaces moved, so the cursor index still points at the same
+        # character and can be carried straight over.
+        self._reflowing = True
+        try:
+            buffer.document = Document(wrapped, buffer.cursor_position)
+        finally:
+            self._reflowing = False
 
     def _box_bottom(self) -> None:
         self.console.print(Text("╰" + "─" * (self.console.width - 2) + "╯", style="border"))
@@ -161,30 +225,54 @@ class Repl:
             )
         return True
 
+    @contextmanager
+    def _turn_keys(self, task: asyncio.Task):
+        """Read ctrl+o / ctrl+c while a turn is running.
+
+        No prompt is open during a turn, so the keyboard is otherwise dead
+        and ctrl+o does nothing. Raw mode means ctrl+c arrives as a key
+        rather than SIGINT, so cancelling is wired up here too.
+        """
+        try:
+            device = create_input()
+        except Exception:
+            # No usable tty (piped input, odd terminal): fall back to SIGINT.
+            loop = asyncio.get_running_loop()
+            try:
+                loop.add_signal_handler(signal.SIGINT, task.cancel)
+            except (NotImplementedError, RuntimeError):
+                pass
+            try:
+                yield
+            finally:
+                try:
+                    loop.remove_signal_handler(signal.SIGINT)
+                except (NotImplementedError, RuntimeError):
+                    pass
+            return
+
+        def on_keys() -> None:
+            for key_press in device.read_keys():
+                if key_press.key == Keys.ControlO:
+                    self.tui.toggle_expansion()
+                elif key_press.key == Keys.ControlC:
+                    task.cancel()
+
+        with device.raw_mode(), device.attach(on_keys):
+            yield
+
     async def _run_turn(self, agent: Agent, message: str) -> None:
-        loop = asyncio.get_running_loop()
         task = asyncio.create_task(stream_turn(self.tui, agent, message))
 
-        # While a turn is running nothing is reading stdin, so route ctrl+c to
-        # cancelling the turn instead of tearing down the process.
         try:
-            loop.add_signal_handler(signal.SIGINT, task.cancel)
-        except NotImplementedError:
-            pass
-
-        try:
-            await task
+            with self._turn_keys(task):
+                await task
         except asyncio.CancelledError:
             self.tui.stop_thinking()
             self.console.print("\n[warning]Interrupted[/warning]")
         except Exception as exc:
             self.tui.stop_thinking()
             self.console.print(f"[error]{type(exc).__name__}: {exc}[/error]")
-        finally:
-            try:
-                loop.remove_signal_handler(signal.SIGINT)
-            except NotImplementedError:
-                pass
 
     def _prompt_fragments(self) -> StyleAndTextTuples:
         """Everything above and including the input line.
@@ -204,6 +292,14 @@ class Repl:
             ("class:prompt", "❯ "),
         ]
 
+    def _continuation_fragments(
+        self, width: int, _line_number: int, _wrap_count: int
+    ) -> StyleAndTextTuples:
+        # Without this, wrapped input starts at column 0 and breaks straight
+        # through the left border. `width` is the prompt width, so the edge
+        # plus padding keeps continuation lines aligned under the first one.
+        return [("class:frame", "│"), ("", " " * (width - 1))]
+
     def _bottom_fragments(self) -> StyleAndTextTuples:
         # Drawn by prompt_toolkit below the input so the box is closed the
         # whole time you are typing, not only once the line is submitted.
@@ -212,10 +308,13 @@ class Repl:
     async def _read_input(self) -> str:
         self.console.print()
         try:
-            return await self.session.prompt_async(
+            message = await self.session.prompt_async(
                 self._prompt_fragments,
                 bottom_toolbar=self._bottom_fragments,
+                prompt_continuation=self._continuation_fragments,
             )
+            # The newlines are ours, from wrapping; the user typed spaces.
+            return message.replace("\n", " ")
         finally:
             # Fold the details away so they never freeze into scrollback.
             self.tui.expanded = False
