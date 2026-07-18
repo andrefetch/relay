@@ -201,11 +201,40 @@ SOFTWARE_ARCHITECT = SubagentDefinition(
     max_turns=10
 )
 
+TEST_WRITER = SubagentDefinition(
+
+    name = 'test_writer',
+    description="Creates tests upon the user's request to make tests for their code. Make sure to test for edge cases and specific ways the code can error.",
+
+    goal_prompt=""""
+
+    You are a code test writer, your speciality is in writing tests for the user to put their code against edge cases, and special areas where their code
+    can fail.
+
+    Especially, use tools like todo to plan out multiple tests if neccessary, tools you can call are read_file, list_dir, grep, glob, write, edit, shell, and todo.
+
+    """,
+
+    allowed_tools=[
+        'read_file',
+        'list_dir',
+        'grep',
+        'glob',
+        'write',
+        'todo',
+        'edit',
+        'shell'
+    ],
+
+    max_turns=10
+)
+
 # Will add more subagent definitions
 
 def get_default_subagent_definitions() -> list[SubagentDefinition]:
     return [
         CODEBASE_INVESTIGATOR,
         CODE_REVIEWER,
-        SOFTWARE_ARCHITECT
+        SOFTWARE_ARCHITECT,
+        TEST_WRITER,
     ]

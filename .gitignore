@@ -64,3 +64,11 @@ uv.lock
 # mypy / pyright / ruff
 .mypy_cache/
 .dmypy.j
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.Spotlight-V100
+.Trashes
