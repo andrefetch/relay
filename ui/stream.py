@@ -6,7 +6,7 @@ from ui.renderer import TUI, random_thinking_text
 
 
 def _tool_kind(agent: Agent, tool_name: str) -> str | None:
-    tool = agent.session.tool_registery.get(tool_name)
+    tool = agent.session.tool_registry.get(tool_name)
     return tool.kind.value if tool else None
 
 

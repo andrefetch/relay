@@ -7,7 +7,7 @@ from config.config import Config
 from config.loader import get_data_dir
 from context.manager import ContextManager
 from tools.discovery import ToolDiscoveryManager
-from tools.registry import create_default_registery
+from tools.registry import create_default_registry
 from datetime import datetime
 
 class Session:
@@ -20,10 +20,10 @@ class Session:
             config=config, 
             user_memory=self._load_memory()
         )
-        self.tool_registery = create_default_registery(config)
+        self.tool_registry = create_default_registry(config)
         self.discovery_manager = ToolDiscoveryManager(
             self.config,
-            self.tool_registery
+            self.tool_registry
         )
         self.session_id = str(uuid.uuid4()) # Unique identifiers to resume sessions
         self.created_at = datetime.now()
@@ -60,7 +60,7 @@ class Session:
             if not entries:
                 return None
             
-            lines = ["User prefrences and notes:"]
+            lines = ["User preferences and notes:"]
             for key, value in entries.items():
                 lines.append(f"- {key}: {value}")
             

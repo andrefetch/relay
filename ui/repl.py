@@ -182,7 +182,7 @@ class Repl:
         )
 
     def _reset_plan(self, agent: Agent) -> None:
-        tool = agent.session.tool_registery.get("plan")
+        tool = agent.session.tool_registry.get("plan")
         if tool is not None and hasattr(tool, "reset"):
             tool.reset()
 

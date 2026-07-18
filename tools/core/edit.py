@@ -12,7 +12,7 @@ class EditParams(BaseModel):
     )
     old_string: str = Field(
         "",
-        description='The exact text to find and replace and must match excatly including all whitespace and indentation, for new files this should be empty'
+        description='The exact text to find and replace; it must match exactly, including all whitespace and indentation. For new files, this should be empty.'
     )
     new_string: str = Field(
         ...,
@@ -28,7 +28,7 @@ class EditTool(Tool):
     description = (
         "Edit a file by replacing text, the old_string variable must match exactly"
         "( including whitespace and indentation ) and must be unique in the file"
-        "unless replace_all is true, use thsi for precise, surgical edits"
+        "unless replace_all is true; use this for precise, surgical edits"
         "For creating new files or complete rewrites, use write instead"
     )
     kind = ToolKind.WRITE
@@ -87,7 +87,7 @@ class EditTool(Tool):
                 f"1. Provide more context to make the match unique or\n"
                 f"2. Set replace_all=true to replace all occurrences",
                 metadata={
-                    "occurence_count": occurrence_count,
+                    "occurrence_count": occurrence_count,
                 },
             )
 

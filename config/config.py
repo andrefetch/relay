@@ -60,7 +60,7 @@ class MCPServerConfig(BaseModel):
         
         if has_command and has_url:
             raise ValueError(
-                "MCP Severs can't have both command and url"
+                "MCP servers can't have both command and URL"
             )
 
 
@@ -74,7 +74,7 @@ class Config(BaseModel):
 
     allowed_tools: list[str] | None = Field(
         None,
-        description='If set, only these tools would be avaliable to the agent or subagents.'
+        description='If set, only these tools will be available to the agent or subagents.'
     )
 
     max_turns: int = 100

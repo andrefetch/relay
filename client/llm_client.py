@@ -101,7 +101,7 @@ class LLMClient:
                         error=f"Connection Error exceeded: {e}",
                     )
                     return
-            # No retries here, solely because there's no point in retrying if there is a hardstuck API Error
+            # No retries here because there is no point in retrying a persistent API error.
             except APIError as e:
                 yield StreamEvent(
                     type=StreamEventType.ERROR,

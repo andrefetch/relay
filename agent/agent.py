@@ -38,7 +38,7 @@ class Agent:
 
             response_text = ""
 
-            tool_schemas = self.session.tool_registery.get_schemas()
+            tool_schemas = self.session.tool_registry.get_schemas()
             tool_calls: list[ToolCall] = []
             
             async for event in self.session.client.chat_completion(
@@ -101,7 +101,7 @@ class Agent:
                     tool_call.arguments
                 )
 
-                result = await self.session.tool_registery.invoke(
+                result = await self.session.tool_registry.invoke(
                     tool_call.name,
                     tool_call.arguments,
                     self.config.cwd,

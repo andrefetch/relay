@@ -67,13 +67,13 @@ class ToolRegistry:
                 },
             )
         
-        validiation_errors = tool.validate_params(params)
-        if validiation_errors:
+        validation_errors = tool.validate_params(params)
+        if validation_errors:
             return ToolResult.error_result(
-                f"Invalid paramaters: {'; '.join(validiation_errors)}",
+                f"Invalid parameters: {'; '.join(validation_errors)}",
                 metadata={
                     'tool_name': name,
-                    'validation_errors': validiation_errors
+                    'validation_errors': validation_errors
                 }
             )
         invocation = ToolInvocation(
@@ -93,14 +93,14 @@ class ToolRegistry:
         
         return result
         
-def create_default_registery(config: Config) -> ToolRegistry:
+def create_default_registry(config: Config) -> ToolRegistry:
 
-    registery = ToolRegistry(config)
+    registry = ToolRegistry(config)
     
     for tool_class in get_all_core_tools():
-        registery.register(tool_class(config))
+        registry.register(tool_class(config))
     
     for subagent_def in get_default_subagent_definitions():
-        registery.register(SubAgentTool(config, subagent_def))
+        registry.register(SubAgentTool(config, subagent_def))
 
-    return registery
+    return registry

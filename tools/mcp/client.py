@@ -20,7 +20,7 @@ class MCPToolInfo:
 
     name: str
     description: str
-    input_schmea: dict[str, Any] = field(
+    input_schema: dict[str, Any] = field(
         default_factory=dict
     )
     server_name: str = ""
@@ -37,7 +37,7 @@ class MCPClient:
         self.config = config
         self.cwd = cwd
         self.status = MCPServerStatus.DISCONNECTED
-        self._client = Client | None = None
+        self._client: Client | None = None
 
         self._tools: dict[str, MCPToolInfo] = dict()
     
@@ -74,7 +74,7 @@ class MCPClient:
                 self._tools[tool.name] = MCPToolInfo(
                     name=tool.name,
                     description=tool.description or "",
-                    input_schmea=tool.inputSchema if hasattr(tool, "inputSchema") else {},
+                    input_schema=tool.inputSchema if hasattr(tool, "inputSchema") else {},
                     server_name=self.name
                 )
             
@@ -82,7 +82,7 @@ class MCPClient:
 
         except Exception as e:
             self.status = MCPServerStatus.ERROR
-            print(f"Error: {e}")
+            self._tools.clear()
     
     async def disconnect(self) -> None:
 

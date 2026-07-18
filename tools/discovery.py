@@ -15,11 +15,11 @@ class ToolDiscoveryManager:
     def __init__(
             self,
             config: Config,
-            registery: ToolRegistry
+            registry: ToolRegistry
     ):
         
         self.config = config
-        self.registery = registery
+        self.registry = registry
     
     def _find_tool_classes(self, module: Any) -> list[Tool]:
 
@@ -36,7 +36,7 @@ class ToolDiscoveryManager:
     
     def _load_tool_modules(self, file_path: Path) -> Any:
 
-        module_name = f'discorvered_tool_{file_path.stem}' # will truncate the imports from file ending with py into just a norm
+        module_name = f'discovered_tool_{file_path.stem}' # Use the file stem to create a stable module name.
         spec = importlib.util.spec_from_file_location(module_name, file_path)
 
         if spec is None or spec.loader is None:
@@ -76,7 +76,7 @@ class ToolDiscoveryManager:
                 for tool_class in tool_classes:
                     tool = tool_class(self.config)
 
-                    self.registery.register(tool)
+                    self.registry.register(tool)
             
             except Exception as e:
 

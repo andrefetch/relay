@@ -26,7 +26,7 @@ def get_system_prompt(
     parts.append(_get_security_section())
 
     # env section, for win data, mac and linux for shell command usage.
-    parts.append(_get_enviornment_section(config))
+    parts.append(_get_environment_section(config))
 
     if tools:
         parts.append(_get_tool_guidelines_section(tools))
@@ -220,16 +220,16 @@ def _get_shell_info():
     else:
         return os.environ.get("SHELL", "/bin/bash")
 
-def _get_enviornment_section(config: "Config") -> str:
+def _get_environment_section(config: "Config") -> str:
 
     """
-    Genereate the enviornment section
+    Generate the environment section
     """
 
     now = datetime.now()
     os_info = f"{platform.system()} {platform.release()}"
 
-    return f""" # Enviornment
+    return f""" # Environment
 
     - **Current Date** : {now.strftime("%A, %B, %d, %Y")}
     - **Operating System**: {os_info}

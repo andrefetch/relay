@@ -71,9 +71,9 @@ class SubAgentTool(Tool):
         Your Task/Goal is TO: 
         {params.goal}
 
-        IMPORANT CRITERIA:
+        IMPORTANT CRITERIA:
         - Focus only on completing that specific task, don't wander or astray from it.
-        - Do not engage in unrelated actions not-pertained to the task.
+        - Do not engage in unrelated actions that are not pertinent to the task.
         - Once you have completed the task, goal, or have an answer for the user, display and provide your final response to the user.
         - Be concise and direct in your output.
 
@@ -141,7 +141,12 @@ CODEBASE_INVESTIGATOR = SubagentDefinition(
 
     """,
 
-    allowed_tools=["read_file", "grep", "glob", "list_dir"],
+    allowed_tools=[
+        "read_file", 
+        "grep", "glob", 
+        "list_dir"
+    ],
+
     max_turns=15
 )
 
@@ -157,10 +162,43 @@ CODE_REVIEWER = SubagentDefinition(
 
     """,
 
-    allowed_tools=["read_file", "grep", "list_dir"],
+    allowed_tools=[
+        "read_file", 
+        "grep", 
+        "list_dir"
+    ],
+
     max_turns=10,
     timeout_seconds=300
 
+)
+
+SOFTWARE_ARCHITECT = SubagentDefinition(
+
+    name = 'software_architect',
+    description="Changes code based on the user's prompt, provides clean and quality code and does not stray away from the codestyle written by the developer of the project.",
+
+    goal_prompt="""
+
+    You are a software architect. Your job is to maintain quality code in the codebase and write functional code. 
+    Read before you write, implement code based on user's request.
+    Especially, use the todo tool when tasks get complicated or long.
+    You can give back feedback of code if necessary Tools that can be called and used are
+    read_file, list_dir, grep, glob, write, edit, todo
+
+    """,
+
+    allowed_tools=[
+        'read_file', 
+        'list_dir', 
+        'grep', 
+        'glob', 
+        'write', 
+        'edit', 
+        'todo'
+    ],
+
+    max_turns=10
 )
 
 # Will add more subagent definitions
@@ -169,4 +207,5 @@ def get_default_subagent_definitions() -> list[SubagentDefinition]:
     return [
         CODEBASE_INVESTIGATOR,
         CODE_REVIEWER,
+        SOFTWARE_ARCHITECT
     ]

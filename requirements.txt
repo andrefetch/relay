@@ -73,7 +73,6 @@ python-multipart==0.0.32
 pyyaml==6.0.3
 referencing==0.37.0
 regex==2026.7.10
-relay @ file:///home/pines/Documents/workspace/relay/dist/relay-0.1.0-py3-none-any.whl
 relay-code==0.1.0
 requests==2.34.2
 rich==15.0.0
