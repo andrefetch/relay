@@ -229,6 +229,31 @@ TEST_WRITER = SubagentDefinition(
     max_turns=10
 )
 
+DEBUGGER = SubagentDefinition(
+
+    name = "debugger",
+    description="You are a debugger, you help find errors or incosistencies in code then use tools like read, write, and edit to fix files.",
+    goal_prompt="""
+
+    You are a professional debugger. Your purpose in working with the user is to find bugs of any severity in the code.
+    Use the todo tool when debugging gets complex or long.
+    Use tools such as: grep, glob, write, edit, read, todo
+
+    """,
+
+    allowed_tools=[
+        'grep',
+        'glob',
+        'write',
+        'edit',
+        'read',
+        'todo'
+    ],
+
+    max_turns=10
+
+)
+
 # Will add more subagent definitions
 
 def get_default_subagent_definitions() -> list[SubagentDefinition]:
@@ -237,4 +262,5 @@ def get_default_subagent_definitions() -> list[SubagentDefinition]:
         CODE_REVIEWER,
         SOFTWARE_ARCHITECT,
         TEST_WRITER,
+        DEBUGGER,
     ]
