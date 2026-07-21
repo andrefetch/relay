@@ -16,4 +16,4 @@ context_window = 256000
 
 [mcp_servers.filesystem]
 command = "npx"
-args = ["-y", "@modelcontextprotocol/server-filesystem", "/home/pines/Documents/workspace/relay", "/tmp"]
+args = ["-y", "@modelcontextprotocol/server-filesystem", "", "/tmp"]
