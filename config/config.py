@@ -63,6 +63,8 @@ class MCPServerConfig(BaseModel):
                 "MCP servers can't have both command and URL"
             )
 
+        return self
+
 
 class Config(BaseModel):
 

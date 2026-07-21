@@ -49,7 +49,6 @@ PROMPT_STYLE = Style.from_dict(
 
 
 def _soft_wrap(text: str, width: int) -> str:
-
     if width < 1:
         return text
 
@@ -85,7 +84,6 @@ def _history_path() -> Path:
 
 class Repl:
 
-
     def __init__(self, config: Config) -> None:
         self.config = config
         self.console = get_console()
@@ -102,7 +100,7 @@ class Repl:
         window.dont_extend_height = to_filter(True)
 
     def _reflow(self, buffer: Buffer) -> None:
-
+        """Re-wrap the input at word boundaries as it is typed."""
         if self._reflowing:
             return
         width = self.console.width - PROMPT_WIDTH
@@ -173,7 +171,6 @@ class Repl:
 
     @contextmanager
     def _turn_keys(self, task: asyncio.Task):
-
         try:
             device = create_input()
         except Exception:
@@ -215,7 +212,6 @@ class Repl:
             self.console.print(f"[error]{type(exc).__name__}: {exc}[/error]")
 
     def _prompt_fragments(self) -> StyleAndTextTuples:
-
         top = "╭" + "─" * (self.console.width - 2) + "╮\n"
         return [
             *self.tui.expansion_fragments(),

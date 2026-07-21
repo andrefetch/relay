@@ -128,6 +128,7 @@ class Agent:
                 )
     
     async def __aenter__(self) -> Agent:
+        await self.session.initalize()
         return self
     
     async def __aexit__(

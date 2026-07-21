@@ -1,4 +1,5 @@
 from enum import Enum
+import logging
 import os
 from pathlib import Path
 from typing import Any
@@ -7,6 +8,8 @@ from fastmcp.client.transports import SSETransport, StdioTransport
 from dataclasses import dataclass, field
 
 from config.config import MCPServerConfig
+
+logger = logging.getLogger(__name__)
 
 class MCPServerStatus(str, Enum):
     
@@ -41,6 +44,10 @@ class MCPClient:
 
         self._tools: dict[str, MCPToolInfo] = dict()
     
+    @property
+    def tools(self) -> list[MCPToolInfo]:
+        return list(self._tools.values())
+    
     def _create_transport(self) -> StdioTransport | SSETransport:
 
         if self.config.command:
@@ -50,7 +57,8 @@ class MCPClient:
                 command = self.config.command,
                 args = list(self.config.args),
                 env = env,
-                cwd = str(self.config.cwd or self.cwd)
+                cwd = str(self.config.cwd or self.cwd),
+                log_file=Path(os.devnull)
             )
         else:
             return SSETransport(url=self.config.url)
@@ -69,7 +77,7 @@ class MCPClient:
 
             await self._client.__aenter__()
 
-            tools = self._client.list_tools()
+            tools = await self._client.list_tools()
             for tool in tools:
                 self._tools[tool.name] = MCPToolInfo(
                     name=tool.name,
@@ -81,6 +89,7 @@ class MCPClient:
             self.status = MCPServerStatus.CONNECTED
 
         except Exception as e:
+            logger.warning(f"Failed to connect to MCP server '{self.name}': {e}")
             self.status = MCPServerStatus.ERROR
             self._tools.clear()
     
@@ -97,3 +106,22 @@ class MCPClient:
         
         self._tools.clear()
         self.status = MCPServerStatus.DISCONNECTED
+    
+    async def call_tool(
+            self,
+            tool_name: str,
+            arguments: dict[str, Any]
+    ):
+        if not self._client or self.status != MCPServerStatus.CONNECTED:
+            raise RuntimeError(f'Not connected to the server: {self.name}')
+        
+        result = await self._client.call_tool(tool_name, arguments)
+
+        output = []
+        for item in result.content:
+            if hasattr(item, "text"):
+                output.append(item.text)
+            else:
+                output.append(str(item))
+        
+        return {'output': '\n'.join(output), 'is_error': result.is_error}
