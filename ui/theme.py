@@ -44,7 +44,7 @@ AGENT_THEME = Theme(
 
 
 def hex_colour(name: str) -> str:
-    """`rgb(r,g,b)` from PALETTE as `#rrggbb`, for consumers that need hex."""
+
     r, g, b = (int(part) for part in PALETTE[name][4:-1].split(","))
     return f"#{r:02x}{g:02x}{b:02x}"
 

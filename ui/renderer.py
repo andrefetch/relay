@@ -45,14 +45,7 @@ EXPAND_KEY = "c-o"
 
 
 def build_key_bindings(tui: "TUI") -> KeyBindings:
-    """Prompt keybindings owned by the TUI.
 
-    ctrl+o toggles the last tool call's details. The expansion is rendered
-    as part of the prompt (see `TUI.expansion_fragments`) rather than
-    printed, so prompt_toolkit repaints it in place and toggling it off
-    genuinely removes it — nothing reaches scrollback, and the pending
-    input is never submitted.
-    """
     bindings = KeyBindings()
 
     @bindings.add(EXPAND_KEY)
@@ -173,13 +166,7 @@ class TUI:
         self._spinner_render = None
 
     def _live_group(self, line: Text) -> Any:
-        """A live line, with the expanded tool details above it if toggled.
 
-        The spinner's Live region is the only thing we own while a turn is
-        running, so ctrl+o folds the details in here — same as the prompt
-        does between turns. A leading blank keeps the line off the heels of
-        whatever printed last.
-        """
         expansion = self.expansion_renderable()
         if expansion is not None:
             return Group(Text(""), expansion, line)
@@ -190,26 +177,22 @@ class TUI:
             (f"{self._spinner_char()} ", "tool"), (self._thinking_label, "highlight")
         )
         elapsed = int(time.monotonic() - self._thinking_started_at)
-        line.append(f" {elapsed}s", style="muted")
+        line.append(f" ({elapsed}s)", style="muted")
         if self._turn_tokens:
             line.append(" · ", style="dim")
             line.append(f"{self._turn_tokens:,} tokens", style="muted")
         return self._live_group(line)
 
     def update_turn_usage(self, usage: dict[str, Any] | None) -> None:
-        """Feed the live token counter from a mid-turn usage event.
 
-        The spinner re-renders on its own interval, so simply storing the
-        latest cumulative total is enough for it to update in place.
-        """
         if not usage:
             return
         self._turn_tokens = usage.get("total_tokens", 0) or 0
 
     def start_thinking(self, label: str | None = None) -> None:
         self._thinking_label = label if label is not None else random_thinking_text()
-        # Keep counting from the first thinking phase of the turn, so the timer
-        # doesn't restart every time a tool call finishes and thinking resumes.
+
+
         if self._thinking_started_at == 0.0:
             self._thinking_started_at = time.monotonic()
         self._start_spinner(self._thinking_renderable)
@@ -332,7 +315,7 @@ class TUI:
         self.console.print(Text(f"Tool output is now {state}.", style="muted"))
 
     def show_recent_tool(self, back: int = 1) -> None:
-        """Replay a recent tool call with its detail blocks: 1 = most recent."""
+
         if not self._recent_tools or back < 1 or back > len(self._recent_tools):
             self.console.print(Text("Nothing to expand.", style="muted"))
             return
@@ -343,11 +326,7 @@ class TUI:
         self.expanded = not self.expanded
 
     def expansion_renderable(self, back: int = 1) -> Any | None:
-        """The withheld details of a recent tool call, or None.
 
-        Header and summary are already on screen from when the call ran, so
-        only the hidden part belongs here.
-        """
         if not self.expanded or not self._recent_tools:
             return None
         if back < 1 or back > len(self._recent_tools):
@@ -359,12 +338,7 @@ class TUI:
         return Gutter(Group(*details), style=border_style)
 
     def expansion_fragments(self, back: int = 1) -> StyleAndTextTuples:
-        """`expansion_renderable` as prompt_toolkit fragments.
 
-        Rich paints to an ANSI buffer which prompt_toolkit re-parses, so the
-        block keeps its styling while living in the prompt rather than in
-        scrollback.
-        """
         renderable = self.expansion_renderable(back)
         if renderable is None:
             return []
@@ -394,7 +368,8 @@ class TUI:
     ) -> None:
         display_args = self._relativise(arguments)
         self.tool_args_by_call_id[call_id] = display_args
-        self.tool_started_at[call_id] = time.monotonic()
+        started_at = time.monotonic()
+        self.tool_started_at[call_id] = started_at
         head = headline_of(display_args)
 
         def render() -> Any:
@@ -404,6 +379,8 @@ class TUI:
             if head:
                 line.append("  ")
                 line.append(head[1], style="subtitle")
+            elapsed = int(time.monotonic() - started_at)
+            line.append(f" {elapsed}s", style="muted")
             return self._live_group(line)
 
         self._start_spinner(render)

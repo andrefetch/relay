@@ -49,17 +49,7 @@ PROMPT_STYLE = Style.from_dict(
 
 
 def _soft_wrap(text: str, width: int) -> str:
-    """Break `text` onto lines of at most `width`, at word boundaries.
 
-    prompt_toolkit only wraps mid-character, and the break is decided deep
-    inside `Window._copy_body` with no hook. Real newlines in the buffer do
-    render as their own line though, so the wrap is done here instead.
-
-    Only spaces turn into newlines (and back), never anything else, so every
-    character keeps its index and the cursor can be carried across a reflow
-    untouched. A word longer than `width` has no space to break on and is
-    left for prompt_toolkit to wrap the old way.
-    """
     if width < 1:
         return text
 
@@ -94,12 +84,7 @@ def _history_path() -> Path:
 
 
 class Repl:
-    """Interactive prompt loop.
 
-    Deliberately line-oriented: everything the agent does is printed into the
-    terminal's own scrollback, so output stays scrollable, selectable and
-    pipe-able rather than living inside a full-screen canvas.
-    """
 
     def __init__(self, config: Config) -> None:
         self.config = config
@@ -117,7 +102,7 @@ class Repl:
         window.dont_extend_height = to_filter(True)
 
     def _reflow(self, buffer: Buffer) -> None:
-        """Re-wrap the input at word boundaries as it is typed."""
+
         if self._reflowing:
             return
         width = self.console.width - PROMPT_WIDTH
@@ -188,12 +173,7 @@ class Repl:
 
     @contextmanager
     def _turn_keys(self, task: asyncio.Task):
-        """Read ctrl+o / ctrl+c while a turn is running.
 
-        No prompt is open during a turn, so the keyboard is otherwise dead
-        and ctrl+o does nothing. Raw mode means ctrl+c arrives as a key
-        rather than SIGINT, so cancelling is wired up here too.
-        """
         try:
             device = create_input()
         except Exception:
@@ -235,15 +215,7 @@ class Repl:
             self.console.print(f"[error]{type(exc).__name__}: {exc}[/error]")
 
     def _prompt_fragments(self) -> StyleAndTextTuples:
-        """Everything above and including the input line.
 
-        Rebuilt on every repaint, so ctrl+o can fold the last tool call's
-        details in and out without any of it touching scrollback. The top
-        edge lives here too: prompt_toolkit owns it and redraws it in place.
-
-        No rprompt right edge — prompt_toolkit pins rprompt to the first
-        line of a multi-line prompt, which is not the input line.
-        """
         top = "╭" + "─" * (self.console.width - 2) + "╮\n"
         return [
             *self.tui.expansion_fragments(),

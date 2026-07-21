@@ -11,11 +11,7 @@ def _tool_kind(agent: Agent, tool_name: str) -> str | None:
 
 
 async def stream_turn(tui: TUI, agent: Agent, message: str) -> str | None:
-    """Render one agent turn onto `tui`, returning the final assistant text.
 
-    Shared by the one-shot CLI and the interactive REPL so both front-ends
-    stay identical in what they show. Returns None if the turn errored.
-    """
     final_response: str | None = None
     streaming = False
     failed = False

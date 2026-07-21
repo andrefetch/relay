@@ -84,10 +84,10 @@ def summarise_value(key: str, value: Any) -> str:
         line_count = len(value.splitlines())
         byte_count = len(value.encode("utf-8", errors="replace"))
         return f"{line_count} lines ┈ {byte_count} bytes"
-    
+
     if isinstance(value, bool):
         value = str(value)
-        
+
     return str(value)
 
 
@@ -136,10 +136,7 @@ def extract_read_code(text: str) -> tuple[int, str] | None:
 
 
 def diff_glimpse(diff: str, max_lines: int = 3) -> str:
-    """The first few added lines of a diff, for a peek at what landed.
 
-    Falls back to removed lines so a pure deletion still shows something.
-    """
     added: list[str] = []
     removed: list[str] = []
 

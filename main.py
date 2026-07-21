@@ -21,29 +21,16 @@ DEFAULT_BASE_URL = "https://openrouter.ai/api/v1"
 console = get_console()
 
 async def run_once(config: Config, message: str) -> str | None:
-    """One-shot (`relay "prompt"`) driver.
-
-    Same renderer as the interactive REPL, minus the input loop, so output
-    can be piped and redirected.
-    """
     async with Agent(config) as agent:
         return await stream_turn(TUI(config), agent, message)
 
 
 class DefaultGroup(click.Group):
-    """Group that falls back to the `run` command for unknown tokens.
-
-    Keeps the original ergonomics working: `relay "prompt"` and `relay`
-    (no args) still hit the agent, while `relay login` / `relay logout`
-    are dispatched as real subcommands.
-    """
 
     def resolve_command(self, ctx, args):
         try:
             return super().resolve_command(ctx, args)
         except click.UsageError:
-            # First token isn't a known subcommand, treat the whole thing
-            # as a prompt for `run`.
             return "run", self.get_command(ctx, "run"), args
 
 

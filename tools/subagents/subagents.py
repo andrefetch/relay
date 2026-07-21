@@ -216,7 +216,7 @@ TEST_WRITER = SubagentDefinition(
     """,
 
     allowed_tools=[
-        'read_file',
+        'read',
         'list_dir',
         'grep',
         'glob',
