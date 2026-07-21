@@ -303,11 +303,15 @@ class TUI:
         header.add_row(left, status)
         return header
 
-    def _print_tool(self, header: Table, blocks: list[Any], border_style: str) -> None:
+    def _print_tool(
+        self, header: Table, blocks: list[Any], border_style: str, hint: bool = False
+    ) -> None:
         self.console.print()
         self.console.print(header)
         if blocks:
             self.console.print(Gutter(Group(*blocks), style=border_style))
+        if hint:
+            self.console.print(Text("ctrl+o expands output", style="dim"))
 
     def toggle_details(self) -> None:
         self.collapsed = not self.collapsed
@@ -620,7 +624,12 @@ class TUI:
         )
 
         self._recent_tools.append((header, summary, details, border_style))
-        self._print_tool(header, summary if collapsed else summary + details, border_style)
+        self._print_tool(
+            header,
+            summary if collapsed else summary + details,
+            border_style,
+            hint=True,
+        )
 
 
     def render_usage(self, usage: dict[str, Any] | None) -> None:

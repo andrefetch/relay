@@ -65,3 +65,12 @@ class MCPManager:
                 count += 1
 
         return count
+    
+    async def shutdown(self) -> None:
+
+        disconnections = [client.disconnect() for client in self._clients.values()]
+
+        await asyncio.gather(*disconnections, return_exceptions=True)
+
+        self._clients.clear()
+        self._initialized = False

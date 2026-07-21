@@ -138,6 +138,7 @@ class Agent:
             exc_tb
         ) -> None:
 
-        if self.session and self.session.client:
+        if self.session and self.session.client and self.session.mcp_manager:
             await self.session.client.close()
+            await self.session.mcp_manager.shutdown()
             self.session = None # Close session, everything else will be garbage collected
