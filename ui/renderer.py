@@ -133,6 +133,8 @@ class TUI:
         self._spinner_render: Callable[[], Any] | None = None
         self._spinner_frame = 0
         self._thinking_label = ""
+        self._thinking_started_at = 0.0
+        self._turn_tokens = 0
 
 
     def _spinner_char(self) -> str:
@@ -187,14 +189,35 @@ class TUI:
         line = Text.assemble(
             (f"{self._spinner_char()} ", "tool"), (self._thinking_label, "highlight")
         )
+        elapsed = int(time.monotonic() - self._thinking_started_at)
+        line.append(f" {elapsed}s", style="muted")
+        if self._turn_tokens:
+            line.append(" · ", style="dim")
+            line.append(f"{self._turn_tokens:,} tokens", style="muted")
         return self._live_group(line)
+
+    def update_turn_usage(self, usage: dict[str, Any] | None) -> None:
+        """Feed the live token counter from a mid-turn usage event.
+
+        The spinner re-renders on its own interval, so simply storing the
+        latest cumulative total is enough for it to update in place.
+        """
+        if not usage:
+            return
+        self._turn_tokens = usage.get("total_tokens", 0) or 0
 
     def start_thinking(self, label: str | None = None) -> None:
         self._thinking_label = label if label is not None else random_thinking_text()
+        # Keep counting from the first thinking phase of the turn, so the timer
+        # doesn't restart every time a tool call finishes and thinking resumes.
+        if self._thinking_started_at == 0.0:
+            self._thinking_started_at = time.monotonic()
         self._start_spinner(self._thinking_renderable)
 
     def stop_thinking(self) -> None:
         self._stop_spinner()
+        self._thinking_started_at = 0.0
+        self._turn_tokens = 0
 
 
     def begin_assistant(self) -> None:
