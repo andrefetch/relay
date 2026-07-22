@@ -10,10 +10,10 @@ max_tool_output_tokens = 50000
 debug = false
 
 [model]
-name = "poolside/laguna-s-2.1:free"
+name = "cohere/north-mini-code:free"
 temperature = 1.0
 context_window = 256000
 
-[mcp_servers.filesystem]
-command = "npx"
-args = ["-y", "@modelcontextprotocol/server-filesystem", "", "/tmp"]
+# [mcp_servers.filesystem]
+# command = "npx"
+# args = ["-y", "@modelcontextprotocol/server-filesystem", "", "/tmp"]
