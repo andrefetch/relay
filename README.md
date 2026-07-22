@@ -19,7 +19,7 @@ Relay is an open-source AI coding agent that runs in your terminal. It connects 
 - **Network tools**: web search via DuckDuckGo and URL fetching.
 - **Persistent memory**: key-value storage that survives across sessions.
 - **MCP support**: connects to external MCP servers for additional tools and data sources.
-- **`AGENTS.md` support**: project instructions are picked up automatically and followed while working.
+- **AGENTS.md support**: project instructions are picked up automatically and followed while working.
 - **Sub-agents**: specialized agents (`codebase_investigator`, `code_reviewer`, `software_architect`, `test_writer`, `debugger`) that the main agent can delegate to.
 - **OpenRouter backend**: authenticate once with `relay login` (browser OAuth) or paste an API key. Model, temperature, and context window are configurable in `~/.config/relay/config.toml`, with per-project overrides in `.relay/config.toml`.
 
