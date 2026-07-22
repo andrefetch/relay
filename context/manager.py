@@ -5,6 +5,7 @@ from dataclasses import dataclass, field
 from tools.base import Tool
 from utils.text import count_tokens
 from typing import Any
+from datetime import datetime
 
 EMPTY_TOOL_OUTPUT = "(no output)"
 
@@ -15,6 +16,7 @@ class MessageItem:
     token_count: int | None = None
     tool_call_id: str | None = None
     tool_calls: list[dict[str, Any]] = field(default_factory=list)
+    pruned_at: datetime | None = None
 
     def to_dict(self) -> dict[str, Any]:
         result: dict[str, Any] = {
@@ -183,9 +185,44 @@ I'll continue with the REMAINING tasks only, starting from where we left off."""
             return 0
 
         total_tokens = 0
-        for message in self._messages:
+        pruned_tokens = 0
+        to_prune: list[MessageItem] = []
+
+        for message in reversed(self._messages):
             if message.role == 'tool' and message.tool_call_id:
+
+                if message.pruned_at:
+                    break
 
                 tokens = message.token_count or count_tokens(message.content, self._model_name)
                 total_tokens += tokens
+
+                if total_tokens > self.PRUNE_PROTECT_TOKENS:
+                    pruned_tokens += tokens
+                    to_prune.append(message)
+
+        if pruned_tokens < self.PRUNE_MINIMUM_TOKENS:
+            return 0
+
+        pruned_count = 0
+        reclaimed_tokens = 0
+
+        for message in to_prune:
+            before = message.token_count or 0
+            message.content = '[Old tool result content cleared]'
+            message.token_count = count_tokens(message.content, self._model_name)
+            message.pruned_at = datetime.now()
+            reclaimed_tokens += before - message.token_count
+            pruned_count += 1
+
+        # The last reported usage still reflects the unpruned payload. Discount it
+        # so needs_compression() doesn't compact away context that pruning just freed.
+        self._latest_usage = TokenUsage(
+            prompt_tokens=max(0, self._latest_usage.prompt_tokens - reclaimed_tokens),
+            completion_tokens=self._latest_usage.completion_tokens,
+            total_tokens=max(0, self._latest_usage.total_tokens - reclaimed_tokens),
+            cached_tokens=self._latest_usage.cached_tokens,
+        )
+
+        return pruned_count
 

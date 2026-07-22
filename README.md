@@ -48,6 +48,8 @@ Relay is an open-source AI coding agent that runs in your terminal. It connects 
 | --- | --- |
 | **Sub-agents** | Specialized agents the main agent can delegate to: `codebase_investigator`, `code_reviewer`, `software_architect`, `test_writer`, `debugger`. |
 | **`AGENTS.md`** | Project instructions are picked up automatically and followed while working. |
+| **Context pruning** | Old tool outputs are cleared once they pile up past the recent working set, reclaiming tokens without touching the conversation itself. |
+| **Compaction** | When the context window fills up, history is summarized into a continuation brief and the session resumes from it instead of erroring out. |
 | **OpenRouter backend** | Authenticate once with `relay login` (browser OAuth) or paste an API key. Model, temperature, and context window are configurable in `~/.config/relay/config.toml`, with per-project overrides in `.relay/config.toml`. |
 
 ## Getting started
@@ -93,7 +95,6 @@ The scope of an `AGENTS.md` file is the directory tree it sits in, and the more 
 Currently being worked on:
 
 - **Approval flow**: prompting before file edits and shell commands instead of auto-approving every tool call.
-- **Context pruning and compaction**: trimming and summarizing conversation history to stay within the context window on long sessions.
 - **Session management**: saving, resuming, and switching between sessions.
 
 ## License

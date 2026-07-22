@@ -39,6 +39,10 @@ class Agent:
 
             response_text = ""
 
+            # Prune before compacting: a tool-heavy turn can blow past the context
+            # window without ever reaching the end of the loop.
+            self.session.context_manager.prune_tool_outputs()
+
             if self.session.context_manager.needs_compression():
                 summary, usage = await self.session.chat_compactor.compress(
                     self.session.context_manager
@@ -70,6 +74,7 @@ class Agent:
                         tool_calls.append(event.tool_call)
                 elif event.type == StreamEventType.MESSAGE_COMPLETE:
                     if event.usage:
+                        usage = event.usage
                         self.session.last_usage = event.usage
                         self.session.turn_usage += event.usage
                         yield AgentEvent.usage(self.session.turn_usage)
@@ -81,9 +86,7 @@ class Agent:
                 elif event.type == StreamEventType.ERROR:
                     yield AgentEvent.agent_error(event.error or "Unknown error occurred.")
                     return
-                elif event.type == StreamEventType.MESSAGE_COMPLETE:
-                    usage = event.usage
-            
+
             self.session.context_manager.add_assistant_message(
                 response_text or None,
                 [
@@ -108,6 +111,7 @@ class Agent:
                 if usage:
                     self.session.context_manager.set_latest_usage(usage)
                     self.session.context_manager.add_usage(usage)
+
                 return
             
             tool_call_results: list[ToolResultMessage] = []
