@@ -25,7 +25,7 @@ Relay is an open-source AI coding agent that runs in your terminal. It connects 
 > [!WARNING]
 > **Work in progress.** The agent loop, tool calling, and terminal UI work end to end, but there is **no approval flow yet**. The interactive TUI auto-approves every tool, so Relay can change files and run commands without asking. Use it in a directory you don't mind it touching.
 
-## What it does
+## Functionality
 
 ### Interface
 | | |
@@ -71,7 +71,7 @@ relay logout
 
 ## Project instructions (`AGENTS.md`)
 
-Drop an `AGENTS.md` at the root of your repo and Relay loads it as developer instructions at startup, use it for build and test commands, code style, or anything else the agent should know before touching your code.
+Drop an `AGENTS.md` at the root of your repo and Relay loads it as developer instructions at startup, use it for build and test commands, code style, or anything else the agent should know before touching your code
 
 Relay walks up from the working directory to the repository root, so running `relay` inside a subdirectory still picks up the root file. Every `AGENTS.md` found along the way is included, ordered outermost first.
 
