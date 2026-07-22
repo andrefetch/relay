@@ -99,6 +99,15 @@ class ToolResult:
 
 
 @dataclass
+class ToolConfirmation:
+    tool_name: str
+    params: dict[str, Any]
+    description: str
+    diff: FileDiff | None = None
+    affected_paths: list[Path] = field(default_factory=list)
+
+
+@dataclass
 class ToolInvocation:
     params: dict[str, Any]
     cwd: Path
@@ -139,6 +148,28 @@ class Tool(abc.ABC):
 
     def is_mutating(self, params: dict[str, Any]) -> bool:
         return self.kind in {ToolKind.WRITE, ToolKind.SHELL, ToolKind.NETWORK, ToolKind.MEMORY}
+
+    async def get_confirmation(self, invocation: ToolInvocation) -> ToolConfirmation | None:
+        if not self.is_mutating(invocation.params):
+            return None
+
+        return ToolConfirmation(
+            tool_name=self.name,
+            params=invocation.params,
+            description=f"Run {self.name}",
+            affected_paths=self.affected_paths(invocation),
+        )
+
+    def affected_paths(self, invocation: ToolInvocation) -> list[Path]:
+        path = invocation.params.get("path")
+        if not isinstance(path, str) or not path:
+            return []
+
+        resolved = Path(path)
+        if not resolved.is_absolute():
+            resolved = invocation.cwd / resolved
+
+        return [resolved]
 
     def to_openai_schema(self) -> dict[str, Any]:
         schema = self.schema
