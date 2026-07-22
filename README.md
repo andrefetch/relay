@@ -28,13 +28,13 @@ Relay is an open-source AI coding agent that runs in your terminal. It connects 
 ## What it does
 
 ### Interface
-
+| | |
 | --- | --- |
 | **Interactive TUI** | Full-screen terminal interface built on Textual — streaming responses, live tool call output, and token usage tracking. |
 | **Single-shot mode** | Pass a prompt as an argument for non-interactive runs, suitable for scripting. |
 
 ### Tools
-
+| | |
 | --- | --- |
 | **Files** | `read`, `write`, `edit`, `grep`, `glob`, and `list_directories` for working with a codebase. |
 | **Shell** | The `shell` tool executes commands in the working directory. |
@@ -44,7 +44,7 @@ Relay is an open-source AI coding agent that runs in your terminal. It connects 
 | **MCP** | Connects to external MCP servers for additional tools and data sources. |
 
 ### Agent
-
+| | |
 | --- | --- |
 | **Sub-agents** | Specialized agents the main agent can delegate to: `codebase_investigator`, `code_reviewer`, `software_architect`, `test_writer`, `debugger`. |
 | **`AGENTS.md`** | Project instructions are picked up automatically and followed while working. |
