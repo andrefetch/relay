@@ -44,7 +44,7 @@ relay logout
 
 ## Project instructions (`AGENTS.md`)
 
-Drop an `AGENTS.md` at the root of your repo and Relay loads it as developer instructions at startup — use it for build and test commands, code style, or anything else the agent should know before touching your code.
+Drop an `AGENTS.md` at the root of your repo and Relay loads it as developer instructions at startup, use it for build and test commands, code style, or anything else the agent should know before touching your code.
 
 Relay walks up from the working directory to the repository root, so running `relay` inside a subdirectory still picks up the root file. Every `AGENTS.md` found along the way is included, ordered outermost first.
 
