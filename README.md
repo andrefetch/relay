@@ -1,7 +1,3 @@
-<p align="center">
-  <img src="assets/logo.png" alt="Relay" width="400" />
-</p>
-
 # Relay
 
 Relay is an open-source AI coding agent that runs in your terminal. It connects to LLMs through OpenRouter, reads and edits your code with a built-in tool set, runs shell commands, and streams everything through a full-screen TUI.
