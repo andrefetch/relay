@@ -5,6 +5,7 @@ from client.llm_client import LLMClient
 from client.response import TokenUsage
 from config.config import Config
 from config.loader import get_data_dir
+from context.compaction import ChatCompactor
 from context.manager import ContextManager
 from tools.discovery import ToolDiscoveryManager
 from tools.mcp.manager import MCPManager
@@ -26,6 +27,7 @@ class Session:
         self.mcp_manager = MCPManager(
             self.config
         )
+        self.chat_compactor = ChatCompactor(self.client)
         self.session_id = str(uuid.uuid4()) # Unique identifiers to resume sessions
         self.created_at = datetime.now()
         self.updated_at = datetime.now()

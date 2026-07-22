@@ -304,7 +304,7 @@ You have access to the following tools to accomplish your tasks:
     return guidelines
 
 
-def get_compression_prompt() -> str:
+def get_compaction_prompt() -> str:
     return """Provide a detailed continuation prompt for resuming this work. The new session will NOT have access to our conversation history.
 
 IMPORTANT: Structure your response EXACTLY as follows:
