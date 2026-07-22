@@ -35,6 +35,10 @@ class MessageItem:
         return result
 
 class ContextManager:
+
+    PRUNE_PROTECT_TOKENS = 40_000
+    PRUNE_MINIMUM_TOKENS = 20_000
+
     def __init__(
             self,
             config: Config,
@@ -170,3 +174,18 @@ I'll continue with the REMAINING tasks only, starting from where we left off."""
             token_count=count_tokens(continue_content, self._model_name),
         )
         self._messages.append(continue_item)
+
+    def prune_tool_outputs(self) -> int:
+
+        user_message_count = sum(1 for message in self._messages if message.role == 'user')
+
+        if user_message_count < 2:
+            return 0
+
+        total_tokens = 0
+        for message in self._messages:
+            if message.role == 'tool' and message.tool_call_id:
+
+                tokens = message.token_count or count_tokens(message.content, self._model_name)
+                total_tokens += tokens
+
