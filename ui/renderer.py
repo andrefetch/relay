@@ -1,14 +1,19 @@
 from prompt_toolkit.formatted_text import ANSI, StyleAndTextTuples, to_formatted_text
+from prompt_toolkit.input import create_input
 from prompt_toolkit.key_binding import KeyBindings
+from prompt_toolkit.keys import Keys
 
+from rich.box import ROUNDED
 from rich.console import Console, ConsoleOptions, Group, RenderResult
+from rich.panel import Panel
 from rich.text import Text
 from rich.segment import Segment
 from rich.table import Table
 from rich.live import Live
 from rich.syntax import Syntax
 
-from config.config import Config
+from config.config import ApprovalPolicy, Config
+from tools.base import ToolConfirmation
 from ui.format import (
     diff_glimpse,
     diff_stat,
@@ -40,8 +45,18 @@ MAX_DIFF_TOKENS = 4000
 
 MAX_REMEMBERED_TOOLS = 20
 MAX_EXPANSION_LINES = 24
+MAX_CONFIRM_DIFF_LINES = 20
 
 EXPAND_KEY = "c-o"
+
+APPROVE_KEYS = {"y", "a"}
+REJECT_KEYS = {"n", "d", "q"}
+
+APPROVAL_RISK_STYLES = {
+    "normal": "info",
+    "warn": "warning",
+    "danger": "error",
+}
 
 
 def build_key_bindings(tui: "TUI") -> KeyBindings:
@@ -128,6 +143,19 @@ class TUI:
         self._thinking_label = ""
         self._thinking_started_at = 0.0
         self._turn_tokens = 0
+
+        # Set by the REPL while it owns the keyboard, so confirmations can be
+        # answered through its key reader instead of opening a second one.
+        self.external_keys = False
+        self._pending_confirmation: asyncio.Future[bool] | None = None
+
+    @property
+    def approval_policy(self) -> ApprovalPolicy:
+        return self.config.approval
+
+    @property
+    def awaiting_confirmation(self) -> bool:
+        return self._pending_confirmation is not None
 
 
     def _spinner_char(self) -> str:
@@ -630,6 +658,159 @@ class TUI:
             hint=True,
         )
 
+
+    def _confirmation_body(self, confirmation: ToolConfirmation) -> Any:
+        blocks: list[Any] = []
+
+        if confirmation.command:
+            blocks.append(Text(f"$ {confirmation.command}", style="code"))
+
+        if confirmation.diff is not None:
+            # The file header is redundant here: the path is already in the title.
+            lines = [
+                line
+                for line in confirmation.diff.create_diff().splitlines()
+                if not line.startswith(("--- ", "+++ "))
+            ]
+            if len(lines) > MAX_CONFIRM_DIFF_LINES:
+                hidden = len(lines) - MAX_CONFIRM_DIFF_LINES
+                lines = lines[:MAX_CONFIRM_DIFF_LINES] + [f"… {hidden} more lines"]
+            diff = "\n".join(lines).strip()
+            if diff:
+                blocks.append(
+                    Syntax(diff, "diff", theme="nord", word_wrap=True, background_color="default")
+                )
+
+        if not blocks:
+            table = self._render_args_table(confirmation.tool_name, confirmation.params)
+            blocks.append(table)
+
+        return Group(*blocks)
+
+    def render_confirmation_request(self, confirmation: ToolConfirmation) -> None:
+
+        border = "error" if confirmation.is_dangerous else "warning"
+
+        title = Text.assemble(
+            ("⏵ ", border),
+            (confirmation.tool_name, "highlight"),
+            ("  needs your approval", "subtitle"),
+        )
+        if confirmation.is_dangerous:
+            title.append("  (dangerous)", style="error")
+
+        description = confirmation.description
+        if self.cwd:
+            description = description.replace(f"{self.cwd}/", "")
+
+        self.console.print()
+        self.console.print(title)
+        self.console.print(Text(description, style="muted"))
+        self.console.print(
+            Panel(
+                self._confirmation_body(confirmation),
+                box=ROUNDED,
+                border_style=border,
+                padding=(0, 1),
+            )
+        )
+
+        choices = Text()
+        choices.append("y", style="success")
+        choices.append(" accept", style="muted")
+        choices.append("  ·  ", style="dim")
+        choices.append("n", style="error")
+        choices.append(" reject", style="muted")
+        choices.append("  ·  ", style="dim")
+        choices.append("esc", style="subtitle")
+        choices.append(" reject", style="muted")
+        choices.append("   ", style="dim")
+        choices.append(self.approval_badge(), style="muted")
+        self.console.print(choices)
+
+    def approval_badge(self) -> str:
+        policy = self.approval_policy
+        return f"approval: {policy.label}"
+
+    def render_approval_mode(self) -> None:
+        policy = self.approval_policy
+        style = APPROVAL_RISK_STYLES.get(policy.risk, "info")
+        line = Text.assemble(
+            ("approval ", "muted"),
+            (policy.label, style),
+            (f" — {policy.summary}", "muted"),
+        )
+        self.console.print(line)
+
+    def feed_confirmation_key(self, key_press: Any) -> bool:
+        """Answer a pending confirmation. Returns True when the key was consumed."""
+
+        pending = self._pending_confirmation
+        if pending is None:
+            return False
+        if pending.done():
+            return True
+
+        key = key_press.key
+        data = (key_press.data or "").lower()
+
+        if key in (Keys.ControlC, Keys.Escape) or data in REJECT_KEYS:
+            pending.set_result(False)
+        elif key in (Keys.ControlM, Keys.ControlJ) or data in APPROVE_KEYS:
+            pending.set_result(True)
+
+        # Swallow everything while a confirmation is open; a stray ctrl+o
+        # should not reflow the screen underneath the prompt.
+        return True
+
+    async def _read_confirmation_key(self, pending: asyncio.Future[bool]) -> bool:
+        """Own the keyboard for the confirmation when the REPL is not doing it."""
+
+        try:
+            device = create_input()
+        except Exception:
+            self.console.print(
+                Text("No terminal available to confirm on — rejecting.", style="warning")
+            )
+            return False
+
+        def on_keys() -> None:
+            for key_press in device.read_keys():
+                self.feed_confirmation_key(key_press)
+
+        with device.raw_mode(), device.attach(on_keys):
+            return await pending
+
+    async def confirm_tool(self, confirmation: ToolConfirmation) -> bool:
+
+        previous_spinner = self._spinner_render
+        self._stop_spinner()
+
+        self.render_confirmation_request(confirmation)
+
+        loop = asyncio.get_running_loop()
+        pending: asyncio.Future[bool] = loop.create_future()
+        self._pending_confirmation = pending
+
+        try:
+            if self.external_keys:
+                approved = await pending
+            else:
+                approved = await self._read_confirmation_key(pending)
+        except asyncio.CancelledError:
+            self.console.print(Text("Rejected (interrupted)", style="warning"))
+            raise
+        finally:
+            self._pending_confirmation = None
+
+        self.console.print(
+            Text("Approved", style="success") if approved else Text("Rejected", style="error")
+        )
+
+        if previous_spinner is not None:
+            self._start_spinner(previous_spinner)
+
+        return approved
 
     def render_usage(self, usage: dict[str, Any] | None) -> None:
         if not usage:

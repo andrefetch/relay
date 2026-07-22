@@ -1,4 +1,5 @@
 from __future__ import annotations
+from enum import Enum
 import os
 from pathlib import Path
 from typing import Any
@@ -65,6 +66,42 @@ class MCPServerConfig(BaseModel):
 
         return self
 
+class ApprovalPolicy(str, Enum):
+
+    ON_REQUEST = "on_request"
+    ON_FAIL = "on_fail"
+    AUTO = "auto"
+    AUTO_EDIT = "auto_edit"
+    NEVER = "never"
+    YOLO = "yolo" # You only live once!
+
+    @property
+    def label(self) -> str:
+        return _APPROVAL_LABELS[self][0]
+
+    @property
+    def summary(self) -> str:
+        return _APPROVAL_LABELS[self][1]
+
+    @property
+    def risk(self) -> str:
+        """How loud the UI should be about this policy: normal, warn or danger."""
+        if self is ApprovalPolicy.YOLO:
+            return "danger"
+        if self in {ApprovalPolicy.AUTO, ApprovalPolicy.ON_FAIL}:
+            return "warn"
+        return "normal"
+
+
+_APPROVAL_LABELS: dict[ApprovalPolicy, tuple[str, str]] = {
+    ApprovalPolicy.ON_REQUEST: ("ask", "confirm every mutating tool"),
+    ApprovalPolicy.ON_FAIL: ("on fail", "run freely, ask only after a failure"),
+    ApprovalPolicy.AUTO: ("auto", "run everything except dangerous commands"),
+    ApprovalPolicy.AUTO_EDIT: ("auto-edit", "edit freely, confirm shell commands"),
+    ApprovalPolicy.NEVER: ("read-only", "reject anything that is not known safe"),
+    ApprovalPolicy.YOLO: ("yolo", "approve everything, including dangerous commands"),
+}
+
 
 class Config(BaseModel):
 
@@ -73,6 +110,8 @@ class Config(BaseModel):
     shell_environment: ShellEnvironmentConfig = Field(
         default_factory=ShellEnvironmentConfig
     )
+
+    approval: ApprovalPolicy = ApprovalPolicy.ON_REQUEST
 
     allowed_tools: list[str] | None = Field(
         None,

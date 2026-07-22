@@ -23,7 +23,7 @@ Relay is an open-source AI coding agent that runs in your terminal. It connects 
 </p>
 
 > [!WARNING]
-> **Work in progress.** The agent loop, tool calling, and terminal UI work end to end, but there is **no approval flow yet**. The interactive TUI auto-approves every tool, so Relay can change files and run commands without asking. Use it in a directory you don't mind it touching.
+> **Work in progress.** The agent loop, tool calling, terminal UI, and approval flow work end to end. The approval policy is set in config (`approval = "on_request"` by default) — there is **no way to switch it mid-session yet**. Sub-agents still auto-approve their own tool calls, so use Relay in a directory you don't mind it touching.
 
 ## Functionality
 
@@ -94,7 +94,8 @@ The scope of an `AGENTS.md` file is the directory tree it sits in, and the more 
 
 Currently being worked on:
 
-- **Approval flow**: prompting before file edits and shell commands instead of auto-approving every tool call.
+- **Slash commands**: in-session commands (e.g. `/approval` to switch approval mode) instead of only config-file settings.
+- **Approval flow**: prompting before file edits and shell commands is in place; still to come is switching the mode mid-session and extending confirmations to sub-agents.
 - **Session management**: saving, resuming, and switching between sessions.
 
 ## License

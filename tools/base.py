@@ -105,7 +105,8 @@ class ToolConfirmation:
     description: str
     diff: FileDiff | None = None
     affected_paths: list[Path] = field(default_factory=list)
-
+    command: str | None = None
+    is_dangerous: bool = False
 
 @dataclass
 class ToolInvocation:

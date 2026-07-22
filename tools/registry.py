@@ -1,4 +1,5 @@
 from config.config import Config
+from safety.approval import ApprovalContext, ApprovalDecision, ApprovalManager
 from tools.base import Tool
 from typing import Any
 from pathlib import Path
@@ -67,7 +68,8 @@ class ToolRegistry:
             self,
             name: str,
             params: dict[str, Any],
-            cwd: Path | None
+            cwd: Path | None,
+            approval_manager: ApprovalManager | None = None
         ) -> ToolResult:
         tool = self.get(name)
         if tool is None:
@@ -91,6 +93,31 @@ class ToolRegistry:
             params=params,
             cwd=cwd,
         )
+        if approval_manager:
+            confirmation = await tool.get_confirmation(invocation)
+            if confirmation:
+                context = ApprovalContext(
+                    tool_name=name,
+                    params=params,
+                    is_mutating=tool.is_mutating(params),
+                    affected_paths=confirmation.affected_paths,
+                    command=confirmation.command,
+                    is_dangerous=confirmation.is_dangerous,
+                )
+
+                decision = await approval_manager.check_approval(context)
+                if decision == ApprovalDecision.REJECTED:
+                    return ToolResult.error_result(
+                        "Operation rejected"
+                    )
+
+                elif decision == ApprovalDecision.NEEDS_CONFIRMATION:
+                    approved = await approval_manager.request_confirmation(confirmation)
+
+                    if not approved:
+                        return ToolResult.error_result(
+                                "User rejected the operation"
+                            )
         try:
             result = await tool.execute(invocation)
         except Exception as e:

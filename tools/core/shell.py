@@ -7,7 +7,7 @@ import sys
 
 from pydantic import BaseModel, Field
 
-from tools.base import Tool, ToolInvocation, ToolKind, ToolResult
+from tools.base import Tool, ToolConfirmation, ToolInvocation, ToolKind, ToolResult
 
 DANGEROUS_COMMANDS = {
     "rm -rf /",
@@ -56,6 +56,28 @@ class ShellTool(Tool):
     description = "Execute a shell command. Use this for running system wide commands, scripts and usage of CLI Tools."
 
     schema = ShellParams
+
+    async def get_confirmation(self, invocation: ToolInvocation) -> ToolConfirmation:
+        params = ShellParams(**invocation.params)
+
+        command = params.command.lower().strip()
+        for dangerous in DANGEROUS_COMMANDS:
+            if dangerous in command:
+                return ToolConfirmation(
+                    tool_name=self.name,
+                    params=invocation.params,
+                    description=f"Execute (DANGEROUS): {params.command}",
+                    command=params.command,
+                    is_dangerous=True,
+                )
+
+        return ToolConfirmation(
+            tool_name=self.name,
+            params=invocation.params,
+            description=f"Execute: {params.command}",
+            command=params.command,
+            is_dangerous=False,
+        )
 
     async def execute(self, invocation: ToolInvocation) -> ToolResult:
         params = ShellParams(**invocation.params)

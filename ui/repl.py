@@ -24,7 +24,7 @@ from rich.text import Text
 from agent.agent import Agent
 from config.config import Config
 from ui.logo import LOGO_WIDTH, RELAY_VERSION, logo
-from ui.renderer import TUI, build_key_bindings, get_console
+from ui.renderer import APPROVAL_RISK_STYLES, TUI, build_key_bindings, get_console
 from ui.stream import stream_turn
 from ui.theme import hex_colour
 
@@ -44,8 +44,17 @@ PROMPT_STYLE = Style.from_dict(
         "frame": hex_colour("slate"),
         "bottom-toolbar": f"noreverse {hex_colour('slate')}",
         "bottom-toolbar.text": f"noreverse {hex_colour('slate')}",
+        "approval": f"noreverse {hex_colour('accent')}",
+        "approval.warn": f"noreverse {hex_colour('sand')}",
+        "approval.danger": f"noreverse bold {hex_colour('red')}",
     }
 )
+
+APPROVAL_RISK_CLASSES = {
+    "normal": "class:approval",
+    "warn": "class:approval.warn",
+    "danger": "class:approval.danger",
+}
 
 
 def _soft_wrap(text: str, width: int) -> str:
@@ -118,13 +127,28 @@ class Repl:
             self._reflowing = False
 
     def _box_bottom(self) -> None:
-        self.console.print(Text("╰" + "─" * (self.console.width - 2) + "╯", style="border"))
+        width = self.console.width
+        policy = self.config.approval
+        badge = f" approval: {policy.label} "
+        trailing = width - 3 - len(badge)
+
+        if trailing < 1:
+            self.console.print(Text("╰" + "─" * (width - 2) + "╯", style="border"))
+            return
+
+        line = Text()
+        line.append("╰─", style="border")
+        line.append(badge, style=APPROVAL_RISK_STYLES.get(policy.risk, "info"))
+        line.append("─" * trailing + "╯", style="border")
+        self.console.print(line)
 
     def _facts(self, agent: Agent | None) -> list[tuple[str, str]]:
+        policy = self.config.approval
         rows = [
             ("Directory", _tilde(str(self.config.cwd))),
             ("Session", agent.session.session_id if agent else ""),
             ("Model", self.config.model_name),
+            ("Approval", f"{policy.label} — {policy.summary}"),
             ("Version", RELAY_VERSION),
         ]
         return [(label, value) for label, value in rows if value]
@@ -159,7 +183,8 @@ class Repl:
         self.console.print()
         self.console.print(
             Text(
-                "ctrl+o expands tool output · ctrl+c interrupts · ctrl+d quits",
+                "ctrl+o expands tool output · y/n answers approvals · "
+                "ctrl+c interrupts · ctrl+d quits",
                 style="border",
             )
         )
@@ -190,13 +215,20 @@ class Repl:
 
         def on_keys() -> None:
             for key_press in device.read_keys():
+                # A pending confirmation owns the keyboard until it is answered.
+                if self.tui.feed_confirmation_key(key_press):
+                    continue
                 if key_press.key == Keys.ControlO:
                     self.tui.toggle_expansion()
                 elif key_press.key == Keys.ControlC:
                     task.cancel()
 
-        with device.raw_mode(), device.attach(on_keys):
-            yield
+        self.tui.external_keys = True
+        try:
+            with device.raw_mode(), device.attach(on_keys):
+                yield
+        finally:
+            self.tui.external_keys = False
 
     async def _run_turn(self, agent: Agent, message: str) -> None:
         task = asyncio.create_task(stream_turn(self.tui, agent, message))
@@ -226,7 +258,20 @@ class Repl:
         return [("class:frame", "│"), ("", " " * (width - 1))]
 
     def _bottom_fragments(self) -> StyleAndTextTuples:
-        return [("class:frame", "╰" + "─" * (self.console.width - 2) + "╯")]
+        width = self.console.width
+        policy = self.config.approval
+        badge = f" approval: {policy.label} "
+
+        # ╰─ approval: ask ───────────╯
+        trailing = width - 3 - len(badge)
+        if trailing < 1:
+            return [("class:frame", "╰" + "─" * (width - 2) + "╯")]
+
+        return [
+            ("class:frame", "╰─"),
+            (APPROVAL_RISK_CLASSES.get(policy.risk, "class:approval"), badge),
+            ("class:frame", "─" * trailing + "╯"),
+        ]
 
     async def _read_input(self) -> str:
         self.console.print()
@@ -242,7 +287,7 @@ class Repl:
             self._box_bottom()
 
     async def run(self) -> None:
-        async with Agent(self.config) as agent:
+        async with Agent(self.config, confirmation_callback=self.tui.confirm_tool) as agent:
             self._banner(agent)
             while True:
                 try:

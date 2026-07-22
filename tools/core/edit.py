@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from tools.base import FileDiff, Tool, ToolInvocation, ToolKind, ToolResult
+from tools.base import FileDiff, Tool, ToolConfirmation, ToolInvocation, ToolKind, ToolResult
 from pydantic import BaseModel, Field
 
 from utils.paths import ensure_parent_dir, resolve_path
@@ -33,6 +33,62 @@ class EditTool(Tool):
     )
     kind = ToolKind.WRITE
     schema = EditParams # type: ignore
+
+    async def get_confirmation(self, invocation: ToolInvocation) -> ToolConfirmation:
+        params = EditParams(**invocation.params)
+        path = resolve_path(invocation.cwd, params.path)
+
+        is_new_file = not path.exists()
+
+        if is_new_file:
+            diff = FileDiff(
+                path=path,
+                old_content='',
+                new_content=params.new_string,
+                is_new_file=True,
+            )
+
+            return ToolConfirmation(
+                tool_name=self.name,
+                params=invocation.params,
+                description=f"Create file: {path}",
+                diff=diff,
+                affected_paths=[path],
+            )
+
+        try:
+            old_content = path.read_text(
+                encoding='utf-8'
+            )
+        except OSError:
+            old_content = ""
+
+        if params.replace_all:
+            new_content = old_content.replace(
+                params.old_string,
+                params.new_string
+            )
+        else:
+            new_content = old_content.replace(
+                params.old_string,
+                params.new_string,
+                1
+            )
+
+        diff = FileDiff(
+            path=path,
+            old_content=old_content,
+            new_content=new_content,
+        )
+
+        return ToolConfirmation(
+            tool_name=self.name,
+            params=invocation.params,
+            description=f"Edit file: {path}",
+            diff=diff,
+            affected_paths=[path],
+            is_dangerous=False,
+        )
 
     async def execute(
             self, 

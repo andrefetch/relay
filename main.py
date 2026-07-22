@@ -21,8 +21,10 @@ DEFAULT_BASE_URL = "https://openrouter.ai/api/v1"
 console = get_console()
 
 async def run_once(config: Config, message: str) -> str | None:
-    async with Agent(config) as agent:
-        return await stream_turn(TUI(config), agent, message)
+    tui = TUI(config)
+    async with Agent(config, confirmation_callback=tui.confirm_tool) as agent:
+        tui.render_approval_mode()
+        return await stream_turn(tui, agent, message)
 
 
 class DefaultGroup(click.Group):
