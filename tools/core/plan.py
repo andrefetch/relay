@@ -9,7 +9,7 @@ PENDING = 'pending'
 COMPLETED = 'completed'
 
 
-class TodoParams(BaseModel):
+class PlanParams(BaseModel):
 
     action: str = Field(
         ...,
@@ -18,7 +18,7 @@ class TodoParams(BaseModel):
 
     id: str | None = Field(
         None,
-        description="A Todo ID (required for the 'complete' action)",
+        description="A plan step ID (required for the 'complete' action)",
     )
 
     content: str | None = Field(
@@ -27,7 +27,7 @@ class TodoParams(BaseModel):
     )
 
 
-class TodoTool(Tool):
+class PlanTool(Tool):
     name = 'plan'
     description = (
         'Manage the plan (a.k.a. todo list) for the current session. Use this to '
@@ -36,48 +36,48 @@ class TodoTool(Tool):
         'list, clear.'
     )
     kind = ToolKind.MEMORY
-    schema = TodoParams
+    schema = PlanParams
 
     def __init__(self, config: Config) -> None:
         super().__init__(config)
-        self._todos: dict[str, str] = {}
+        self._steps: dict[str, str] = {}
         self._status: dict[str, str] = {}
 
     def is_mutating(self, params: dict[str, Any]) -> bool:
         return False
 
     def reset(self) -> None:
-        """Drop every tracked item so a new turn starts with a clean plan."""
-        self._todos.clear()
+        """Drop every tracked step so a new turn starts with a clean plan."""
+        self._steps.clear()
         self._status.clear()
 
     def _snapshot(self) -> dict[str, Any]:
-        todos = [
-            {'id': todo_id, 'content': content, 'status': self._status[todo_id]}
-            for todo_id, content in self._todos.items()
+        steps = [
+            {'id': step_id, 'content': content, 'status': self._status[step_id]}
+            for step_id, content in self._steps.items()
         ]
         return {
-            'todos': todos,
-            'completed': sum(1 for todo in todos if todo['status'] == COMPLETED),
-            'total': len(todos),
+            'steps': steps,
+            'completed': sum(1 for step in steps if step['status'] == COMPLETED),
+            'total': len(steps),
         }
 
     def _listing(self) -> str:
-        if not self._todos:
-            return "No todos."
+        if not self._steps:
+            return "No plan steps."
 
         snapshot = self._snapshot()
         lines = [f"Plan ({snapshot['completed']}/{snapshot['total']} completed):"]
 
-        for todo in snapshot['todos']:
-            marker = 'x' if todo['status'] == COMPLETED else ' '
-            lines.append(f"  [{marker}] [{todo['id']}] {todo['content']}")
+        for step in snapshot['steps']:
+            marker = 'x' if step['status'] == COMPLETED else ' '
+            lines.append(f"  [{marker}] [{step['id']}] {step['content']}")
 
         return "\n".join(lines)
 
     async def execute(self, invocation: ToolInvocation) -> ToolResult:
 
-        params = TodoParams(**invocation.params)
+        params = PlanParams(**invocation.params)
 
         try:
             action = params.action.lower()
@@ -88,13 +88,13 @@ class TodoTool(Tool):
                         "Content is required for the 'add' action."
                     )
 
-                todo_id = str(uuid.uuid4())[:8]
+                step_id = str(uuid.uuid4())[:8]
 
-                self._todos[todo_id] = params.content
-                self._status[todo_id] = PENDING
+                self._steps[step_id] = params.content
+                self._status[step_id] = PENDING
 
                 return ToolResult.success_result(
-                    f"Added todo [{todo_id}]: {params.content}\n\n{self._listing()}",
+                    f"Added step [{step_id}]: {params.content}\n\n{self._listing()}",
                     metadata=self._snapshot(),
                 )
 
@@ -103,16 +103,16 @@ class TodoTool(Tool):
                     return ToolResult.error_result(
                         "An id is required for the 'complete' action."
                     )
-                if params.id not in self._todos:
+                if params.id not in self._steps:
                     return ToolResult.error_result(
-                        f"Todo not found: {params.id}"
+                        f"Plan step not found: {params.id}"
                     )
 
                 self._status[params.id] = COMPLETED
-                content = self._todos[params.id]
+                content = self._steps[params.id]
 
                 return ToolResult.success_result(
-                    f"Completed todo [{params.id}]: {content}\n\n{self._listing()}",
+                    f"Completed step [{params.id}]: {content}\n\n{self._listing()}",
                     metadata=self._snapshot(),
                 )
 
@@ -123,13 +123,13 @@ class TodoTool(Tool):
                 )
 
             elif action == 'clear':
-                count = len(self._todos)
+                count = len(self._steps)
 
-                self._todos.clear()
+                self._steps.clear()
                 self._status.clear()
 
                 return ToolResult.success_result(
-                    f"Cleared {count} todo(s).",
+                    f"Cleared {count} plan step(s).",
                     metadata=self._snapshot(),
                 )
 

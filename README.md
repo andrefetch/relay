@@ -38,7 +38,7 @@ Relay is an open-source AI coding agent that runs in your terminal. It connects 
 | --- | --- |
 | **Files** | `read`, `write`, `edit`, `grep`, `glob`, and `list_directories` for working with a codebase. |
 | **Shell** | The `shell` tool executes commands in the working directory. |
-| **Planning** | A `plan` tool maintains a todo list across the agent loop. |
+| **Planning** | A `plan` tool tracks steps (a todo list) across the agent loop. |
 | **Network** | Web search via DuckDuckGo and URL fetching. |
 | **Memory** | Key-value storage that survives across sessions. |
 | **MCP** | Connects to external MCP servers for additional tools and data sources. |

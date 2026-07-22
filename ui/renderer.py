@@ -224,10 +224,10 @@ class TUI:
                 display_args[key] = str(display_path_relative_to_cwd(value, self.cwd))
         return display_args
 
-    def _render_todos(self, metadata: dict[str, Any]) -> Table | Text:
-        todos = metadata.get("todos") or []
-        if not todos:
-            return Text("No todos.", style="muted")
+    def _render_plan(self, metadata: dict[str, Any]) -> Table | Text:
+        steps = metadata.get("steps") or []
+        if not steps:
+            return Text("No plan steps.", style="muted")
 
         checklist = Table.grid(padding=(0, 1))
         checklist.add_column(no_wrap=True)
@@ -240,14 +240,14 @@ class TUI:
             "pending": ("☐", "muted", "code"),
         }
 
-        for todo in todos:
+        for step in steps:
             marker, marker_style, content_style = markers.get(
-                str(todo.get("status")), markers["pending"]
+                str(step.get("status")), markers["pending"]
             )
             checklist.add_row(
                 Text(marker, style=marker_style),
-                Text(str(todo.get("content", "")), style=content_style),
-                Text(str(todo.get("id", ""))),
+                Text(str(step.get("content", "")), style=content_style),
+                Text(str(step.get("id", ""))),
             )
         return checklist
 
@@ -568,7 +568,7 @@ class TUI:
             total = metadata.get("total")
             if isinstance(completed, int) and isinstance(total, int) and total:
                 summary.append(Text(f"{completed}/{total} completed", style="muted"))
-            summary.append(self._render_todos(metadata))
+            summary.append(self._render_plan(metadata))
 
         elif name == "memory":
             summary.append(

@@ -136,15 +136,16 @@ CODEBASE_INVESTIGATOR = SubagentDefinition(
     goal_prompt="""
 
     You are a codebase investigation specialist. Your job is soley to explore and understand code to answer questions.
-    Use tools that can only read files, ex: read, grep, glob, and directories to investigation.
+    Use tools that can only read files, ex: read, grep, glob, and list_directories to investigation.
     I repeat, DO NOT modify any files.
 
     """,
 
     allowed_tools=[
-        "read_file", 
-        "grep", "glob", 
-        "list_dir"
+        "read",
+        "grep",
+        "glob",
+        "list_directories"
     ],
 
     max_turns=15
@@ -158,14 +159,14 @@ CODE_REVIEWER = SubagentDefinition(
 
     You are a code review specialist. Your job is to review code and provide constructive feedback to the user. 
     Look for bugs, inconsistent or non-clean code, security vulnerabilities or issues, and improvement opportunities.
-    Use read_file, list_dir and grep to examine the code.
+    Use read, list_directories and grep to examine the code.
 
     """,
 
     allowed_tools=[
-        "read_file", 
-        "grep", 
-        "list_dir"
+        "read",
+        "grep",
+        "list_directories"
     ],
 
     max_turns=10,
@@ -182,20 +183,20 @@ SOFTWARE_ARCHITECT = SubagentDefinition(
 
     You are a software architect. Your job is to maintain quality code in the codebase and write functional code. 
     Read before you write, implement code based on user's request.
-    Especially, use the todo tool when tasks get complicated or long.
+    Especially, use the plan tool when tasks get complicated or long.
     You can give back feedback of code if necessary Tools that can be called and used are
-    read_file, list_dir, grep, glob, write, edit, todo
+    read, list_directories, grep, glob, write, edit, plan
 
     """,
 
     allowed_tools=[
-        'read_file', 
-        'list_dir', 
-        'grep', 
-        'glob', 
-        'write', 
-        'edit', 
-        'todo'
+        'read',
+        'list_directories',
+        'grep',
+        'glob',
+        'write',
+        'edit',
+        'plan'
     ],
 
     max_turns=10
@@ -211,17 +212,17 @@ TEST_WRITER = SubagentDefinition(
     You are a code test writer, your speciality is in writing tests for the user to put their code against edge cases, and special areas where their code
     can fail.
 
-    Especially, use tools like todo to plan out multiple tests if neccessary, tools you can call are read_file, list_dir, grep, glob, write, edit, shell, and todo.
+    Especially, use tools like plan to plan out multiple tests if neccessary, tools you can call are read, list_directories, grep, glob, write, edit, shell, and plan.
 
     """,
 
     allowed_tools=[
         'read',
-        'list_dir',
+        'list_directories',
         'grep',
         'glob',
         'write',
-        'todo',
+        'plan',
         'edit',
         'shell'
     ],
@@ -236,8 +237,8 @@ DEBUGGER = SubagentDefinition(
     goal_prompt="""
 
     You are a professional debugger. Your purpose in working with the user is to find bugs of any severity in the code.
-    Use the todo tool when debugging gets complex or long.
-    Use tools such as: grep, glob, write, edit, read, todo
+    Use the plan tool when debugging gets complex or long.
+    Use tools such as: grep, glob, write, edit, read, plan
 
     """,
 
@@ -247,7 +248,7 @@ DEBUGGER = SubagentDefinition(
         'write',
         'edit',
         'read',
-        'todo'
+        'plan'
     ],
 
     max_turns=10
