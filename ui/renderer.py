@@ -177,10 +177,9 @@ class TUI:
             (f"{self._spinner_char()} ", "tool"), (self._thinking_label, "highlight")
         )
         elapsed = int(time.monotonic() - self._thinking_started_at)
-        line.append(f" ({elapsed}s)", style="muted")
-        if self._turn_tokens:
-            line.append(" · ", style="dim")
-            line.append(f"{self._turn_tokens:,} tokens", style="muted")
+        line.append(f" ({elapsed}s", style="muted")
+        line.append(" · ", style="dim")
+        line.append(f"{self._turn_tokens:,} tokens)", style="muted")
         return self._live_group(line)
 
     def update_turn_usage(self, usage: dict[str, Any] | None) -> None:
