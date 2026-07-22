@@ -27,17 +27,31 @@ Relay is an open-source AI coding agent that runs in your terminal. It connects 
 
 ## What it does
 
-- **Interactive TUI**: full-screen terminal interface built on Textual, with streaming responses, live tool call output, and token usage tracking.
-- **Single-shot mode**: pass a prompt as an argument for non-interactive runs, suitable for scripting.
-- **File tools**: `read`, `write`, `edit`, `grep`, `glob`, and `list_directories` for working with a codebase.
-- **Shell access**: the `shell` tool executes commands in the working directory.
-- **Task planning**: a `plan` tool maintains a todo list across the agent loop.
-- **Network tools**: web search via DuckDuckGo and URL fetching.
-- **Persistent memory**: key-value storage that survives across sessions.
-- **MCP support**: connects to external MCP servers for additional tools and data sources.
-- **AGENTS.md support**: project instructions are picked up automatically and followed while working.
-- **Sub-agents**: specialized agents (`codebase_investigator`, `code_reviewer`, `software_architect`, `test_writer`, `debugger`) that the main agent can delegate to.
-- **OpenRouter backend**: authenticate once with `relay login` (browser OAuth) or paste an API key. Model, temperature, and context window are configurable in `~/.config/relay/config.toml`, with per-project overrides in `.relay/config.toml`.
+### Interface
+
+| | |
+| --- | --- |
+| **Interactive TUI** | Full-screen terminal interface built on Textual — streaming responses, live tool call output, and token usage tracking. |
+| **Single-shot mode** | Pass a prompt as an argument for non-interactive runs, suitable for scripting. |
+
+### Tools
+
+| | |
+| --- | --- |
+| **Files** | `read`, `write`, `edit`, `grep`, `glob`, and `list_directories` for working with a codebase. |
+| **Shell** | The `shell` tool executes commands in the working directory. |
+| **Planning** | A `plan` tool maintains a todo list across the agent loop. |
+| **Network** | Web search via DuckDuckGo and URL fetching. |
+| **Memory** | Key-value storage that survives across sessions. |
+| **MCP** | Connects to external MCP servers for additional tools and data sources. |
+
+### Agent
+
+| | |
+| --- | --- |
+| **Sub-agents** | Specialized agents the main agent can delegate to: `codebase_investigator`, `code_reviewer`, `software_architect`, `test_writer`, `debugger`. |
+| **`AGENTS.md`** | Project instructions are picked up automatically and followed while working. |
+| **OpenRouter backend** | Authenticate once with `relay login` (browser OAuth) or paste an API key. Model, temperature, and context window are configurable in `~/.config/relay/config.toml`, with per-project overrides in `.relay/config.toml`. |
 
 ## Getting started
 
