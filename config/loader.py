@@ -45,16 +45,33 @@ def _get_project_config(cwd: Path) -> Path:
     
     return None
 
-def _get_agent_md(cwd: Path) -> Path:
+def _get_agent_md(cwd: Path) -> str | None:
 
     current = cwd.resolve()
-    
-    if current.is_dir():
-        agent_md_file = current / AGENT_MD_FILE
-        if agent_md_file.is_file():
-            return agent_md_file.read_text(encoding='utf-8')
-    
-    return None
+
+    search_dirs: list[Path] = []
+    for directory in [current, *current.parents]:
+        search_dirs.append(directory)
+        if (directory / '.git').exists():
+            break
+
+    sections: list[str] = []
+    for directory in reversed(search_dirs):
+        agent_md_file = directory / AGENT_MD_FILE
+        if not agent_md_file.is_file():
+            continue
+        try:
+            content = agent_md_file.read_text(encoding='utf-8')
+        except (OSError, UnicodeDecodeError):
+            logger.warning(f"Failed to read {agent_md_file}", exc_info=True)
+            continue
+        if content.strip():
+            sections.append(f"## From {agent_md_file}\n\n{content.strip()}")
+
+    if not sections:
+        return None
+
+    return "\n\n".join(sections)
 
 def _merge_dicts(
         base: dict[str, Any], 

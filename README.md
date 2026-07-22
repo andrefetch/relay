@@ -19,6 +19,7 @@ Relay is an open-source AI coding agent that runs in your terminal. It connects 
 - **Network tools**: web search via DuckDuckGo and URL fetching.
 - **Persistent memory**: key-value storage that survives across sessions.
 - **MCP support**: connects to external MCP servers for additional tools and data sources.
+- **`AGENTS.md` support**: project instructions are picked up automatically and followed while working.
 - **Sub-agents**: specialized agents (`codebase_investigator`, `code_reviewer`, `software_architect`, `test_writer`, `debugger`) that the main agent can delegate to.
 - **OpenRouter backend**: authenticate once with `relay login` (browser OAuth) or paste an API key. Model, temperature, and context window are configurable in `~/.config/relay/config.toml`, with per-project overrides in `.relay/config.toml`.
 
@@ -40,6 +41,25 @@ relay --cwd /path     # run against a different working directory
 # Remove the saved API key
 relay logout
 ```
+
+## Project instructions (`AGENTS.md`)
+
+Drop an `AGENTS.md` at the root of your repo and Relay loads it as developer instructions at startup — use it for build and test commands, code style, or anything else the agent should know before touching your code.
+
+Relay walks up from the working directory to the repository root, so running `relay` inside a subdirectory still picks up the root file. Every `AGENTS.md` found along the way is included, ordered outermost first.
+
+```markdown
+# AGENTS.md
+
+## Commands
+- Test: `pytest`
+- Lint: `ruff check .`
+
+## Style
+- Type hints on all public functions.
+```
+
+The scope of an `AGENTS.md` file is the directory tree it sits in, and the more deeply nested file wins on conflicts. Files below the working directory are read on demand as the agent works in those subdirectories. Instructions you give directly in a prompt always take precedence over `AGENTS.md`.
 
 ## Roadmap
 
