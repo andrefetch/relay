@@ -1,0 +1,20 @@
+services:
+  relay:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    image: relay:latest
+    container_name: relay
+    stdin_open: true
+    tty: true
+    environment:
+      API_KEY: ${API_KEY:-}
+      BASE_URL: ${BASE_URL:-}
+      TERM: ${TERM:-xterm-256color}
+    volumes:
+      - ${RELAY_WORKSPACE:-..}:/workspace
+      - relay-config:/config
+    working_dir: /workspace
+
+volumes:
+  relay-config:
