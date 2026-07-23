@@ -102,6 +102,29 @@ _APPROVAL_LABELS: dict[ApprovalPolicy, tuple[str, str]] = {
     ApprovalPolicy.YOLO: ("yolo", "approve everything, including dangerous commands"),
 }
 
+class HookTrigger(str, Enum):
+
+    BEFORE_AGENT = 'before_agent'
+    AFTER_AGENT = 'after_agent'
+    BEFORE_TOOL = 'before_tool'
+    AFTER_TOOL = 'after_tool'
+    ON_ERROR = 'on_error'
+
+class HookConfig(BaseModel):
+
+    name: str
+    trigger: HookTrigger
+    command: str | None = None
+    script: str | None = None
+    timeout_sec: float = 30
+    enabled: bool = True
+
+    @model_validator(mode='after')
+    def validate_hook(self) -> HookConfig:
+
+        if not self.command and not self.script:
+            raise ValueError("Hook must either have a command or a script.")
+        return self
 
 class Config(BaseModel):
 
@@ -117,6 +140,9 @@ class Config(BaseModel):
         None,
         description='If set, only these tools will be available to the agent or subagents.'
     )
+
+    hooks_enabled: bool = True
+    hooks: list[HookConfig] = Field(default_factory=list)
 
     max_turns: int = 100
     mcp_servers: dict[str, MCPServerConfig] = Field(
