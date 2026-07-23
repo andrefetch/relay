@@ -9,6 +9,13 @@ max_turns = 100
 max_tool_output_tokens = 50000
 debug = false
 
+hooks_enabled=true
+
+[[hooks]]
+name='test_before_tool'
+trigger='before_tool'
+command='python3 ./scripts/test_tool.py'
+
 [model]
 name = "cohere/north-mini-code:free"
 temperature = 1.0

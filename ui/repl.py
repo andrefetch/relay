@@ -148,7 +148,7 @@ class Repl:
             ("Directory", _tilde(str(self.config.cwd))),
             ("Session", agent.session.session_id if agent else ""),
             ("Model", self.config.model_name),
-            ("Approval", f"{policy.label} — {policy.summary}"),
+            ("Approval", f"{policy.label}"),
             ("Version", RELAY_VERSION),
         ]
         return [(label, value) for label, value in rows if value]
