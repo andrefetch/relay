@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "relay-code"
-version = "0.0.21"
+version = "0.0.22"
 description = "An open-sourced, terminal-based AI coding agent."
 readme = "README.md"
 requires-python = ">=3.11"
@@ -47,4 +47,4 @@ relay = "main:main"
 py-modules = ["main"]
 
 [tool.setuptools.packages.find]
-include = ["agent*", "client*", "config*", "context*", "prompts*", "tools*", "ui*", "utils*"]
+include = ["agent*", "client*", "config*", "context*", "hooks*", "prompts*", "safety*", "tools*", "ui*", "utils*"]

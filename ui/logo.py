@@ -2,7 +2,7 @@ from rich.text import Text
 
 from ui.theme import PALETTE
 
-RELAY_VERSION = "0.0.21"
+RELAY_VERSION = "0.0.22"
 
 CLOUD_PIXELS = (
     "..###...",
