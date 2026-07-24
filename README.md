@@ -94,9 +94,9 @@ The scope of an `AGENTS.md` file is the directory tree it sits in, and the more 
 
 Currently being worked on:
 
+- **Session management**: saving, resuming, and switching between sessions.
 - **Slash commands**: in-session commands (e.g. `/approval` to switch approval mode) instead of only config-file settings.
 - **Approval flow**: prompting before file edits and shell commands is in place; still to come is switching the mode mid-session and extending confirmations to sub-agents.
-- **Session management**: saving, resuming, and switching between sessions.
 
 ## License
 
