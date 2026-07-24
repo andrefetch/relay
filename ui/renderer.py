@@ -36,7 +36,7 @@ import random
 import time
 
 SPINNER_FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]
-SPINNER_INTERVAL = 0.08
+SPINNER_INTERVAL = 0.04
 
 GUTTER_CHAR = "│"
 
