@@ -730,7 +730,7 @@ class TUI:
 
     def approval_badge(self) -> str:
         policy = self.approval_policy
-        return f"approval: {policy.label}"
+        return f"approval: {policy.label} - {policy.summary}"
 
     def render_approval_mode(self) -> None:
         policy = self.approval_policy
@@ -770,7 +770,7 @@ class TUI:
             device = create_input()
         except Exception:
             self.console.print(
-                Text("No terminal available to confirm on — rejecting.", style="warning")
+                Text("No terminal available to confirm on, rejecting.", style="warning")
             )
             return False
 

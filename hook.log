@@ -1,0 +1,7 @@
+[HOOK] {"timestamp": "2026-07-24T09:15:28.721345", "trigger": "before_tool", "cwd": "/home/pines/Documents/workspace/relay", "tool_name": "grep", "user_message": null, "error": null}
+[HOOK] {"timestamp": "2026-07-24T09:15:30.051978", "trigger": "before_tool", "cwd": "/home/pines/Documents/workspace/relay", "tool_name": "grep", "user_message": null, "error": null}
+[HOOK] {"timestamp": "2026-07-24T09:15:30.932676", "trigger": "before_tool", "cwd": "/home/pines/Documents/workspace/relay", "tool_name": "grep", "user_message": null, "error": null}
+[HOOK] {"timestamp": "2026-07-24T09:15:31.818833", "trigger": "before_tool", "cwd": "/home/pines/Documents/workspace/relay", "tool_name": "list_directories", "user_message": null, "error": null}
+[HOOK] {"timestamp": "2026-07-24T09:15:32.714820", "trigger": "before_tool", "cwd": "/home/pines/Documents/workspace/relay", "tool_name": "grep", "user_message": null, "error": null}
+[HOOK] {"timestamp": "2026-07-24T09:15:35.528023", "trigger": "before_tool", "cwd": "/home/pines/Documents/workspace/relay", "tool_name": "read", "user_message": null, "error": null}
+[HOOK] {"timestamp": "2026-07-24T09:15:44.002786", "trigger": "before_tool", "cwd": "/home/pines/Documents/workspace/relay", "tool_name": "read", "user_message": null, "error": null}
